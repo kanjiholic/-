@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>高校数学 数学ゲームポータル</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f6f9;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #1a237e;
+      border-bottom: 2px solid #1a237e;
+      padding-bottom: 10px;
+    }
+    p.intro {
+      text-align: center;
+      color: #555;
+    }
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .game-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s;
+    }
+    .game-card:hover {
+      transform: translateY(-4px);
+    }
+    .game-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #0d47a1;
+      margin-top: 0;
+    }
+    .game-desc {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .play-btn {
+      display: block;
+      text-align: center;
+      background: #1976d2;
+      color: white;
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .play-btn:hover {
+      background: #1565c0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>数学アクティブ・ラーニング ゲーム集</h1>
+  <p class="intro">授業で扱う数学的ゲームの一覧です。カードを選んでプレイを開始してください。</p>
+
+  <div class="game-grid">
+
+    <!-- ゲーム1 -->
+    <div class="game-card">
+      <div>
+        <h2 class="game-title">8×8 斜め×取りゲーム</h2>
+        <p class="game-desc">8×8の盤で斜め一括にマークをつけあう不偏ゲーム。必勝法や対称性について考えてみよう。</p>
+      </div>
+        <!-- 同じフォルダにあるgame1.htmlへリンク -->
+      <a href="game1.html" class="play-btn">ゲームを始める</a>
+    </div>
+
+    <!-- ゲーム2（今後追加する例） -->
+    <div class="game-card">
+      <div>
+        <h2 class="game-title">ニム（石取りゲーム）</h2>
+        <p class="game-desc">山の石を交互に取っていく有名ゲーム。2進法（XOR演算）を活用した必勝法を解明しよう。</p>
+      </div>
+      <a href="game2.html" class="play-btn">ゲームを始める</a>
+    </div>
+
+    <!-- ゲーム3（今後追加する例） -->
+    <div class="game-card">
+      <div>
+        <h2 class="game-title">モンティ・ホール問題 シミュレータ</h2>
+        <p class="game-desc">ドアを変えるべきか？確率の直感と実際の確率の違いを実験・検証してみよう。</p>
+      </div>
+      <a href="game3.html" class="play-btn">ゲームを始める</a>
+    </div>
+
+  </div>
+
+</body>
+</html>
