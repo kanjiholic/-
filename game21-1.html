@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 21-1：周囲NG 7x7×取りゲーム</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .game-num {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 5px 0 10px 0;
+      font-size: 1.6rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .p1-turn { color: #1e88e5; }
+    .p2-turn { color: #e53935; }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, 50px);
+      grid-template-rows: repeat(7, 50px);
+      gap: 3px;
+      background: #444;
+      padding: 5px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .cell {
+      width: 50px;
+      height: 50px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    /* 状態に応じたスタイル */
+    .cell.selectable:hover { background: #e3f2fd; }
+    .cell.preview-main { background: #90caf9 !important; }
+    .cell.preview-around { background: #ffe0b2 !important; }
+
+    /* ×が打たれたマス */
+    .cell.taken-p1 { background: #bbdefb; color: #1565c0; cursor: not-allowed; }
+    .cell.taken-p2 { background: #ffcdd2; color: #c62828; cursor: not-allowed; }
+
+    /* 周囲の禁止マス */
+    .cell.forbidden {
+      background: #eceff1;
+      cursor: not-allowed;
+      position: relative;
+    }
+    .cell.forbidden::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #b0bec5;
+      border-radius: 50%;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    button:hover { background: #43a047; }
+    .rules {
+      max-width: 400px;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #444;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 21-1</div>
+    <h1>7×7 周囲NG×取りゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+  <div id="board"></div>
+
+  <div class="controls">
+    <button onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <strong>【ルール】</strong><br>
+    ・2人で交互に「×」をつけます。<br>
+    ・すでに「×」があるマスと、その<b>周囲1マス（縦・横・斜めの8方向）</b>には「×」をつけられません。<br>
+    ・「×」を書けなくなった方が負けです。
+  </div>
+
+  <script>
+    const BOARD_SIZE = 7;
+    // 0: 空き, 1: P1の×, 2: P2の×, -1: 置不可(周囲)
+    let board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          
+          cell.addEventListener('click', () => handleClick(r, c));
+          cell.addEventListener('mouseenter', () => handleHover(r, c, true));
+          cell.addEventListener('mouseleave', () => handleHover(r, c, false));
+
+          boardEl.appendChild(cell);
+        }
+      }
+      updateBoardUI();
+    }
+
+    // 周囲8マスを取得する関数
+    function getAroundCells(r, c) {
+      const around = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+            around.push([nr, nc]);
+          }
+        }
+      }
+      return around;
+    }
+
+    function handleHover(r, c, isEntering) {
+      if (gameOver || board[r][c] !== 0) return;
+
+      const mainCell = boardEl.children[r * BOARD_SIZE + c];
+      const around = getAroundCells(r, c);
+
+      if (isEntering) {
+        mainCell.classList.add('preview-main');
+        around.forEach(([ar, ac]) => {
+          if (board[ar][ac] === 0) {
+            boardEl.children[ar * BOARD_SIZE + ac].classList.add('preview-around');
+          }
+        });
+      } else {
+        mainCell.classList.remove('preview-main');
+        around.forEach(([ar, ac]) => {
+          boardEl.children[ar * BOARD_SIZE + ac].classList.remove('preview-around');
+        });
+      }
+    }
+
+    function handleClick(r, c) {
+      if (gameOver || board[r][c] !== 0) return;
+
+      // 1. 選択したマスに「×」を設置
+      board[r][c] = currentPlayer;
+
+      // 2. 周囲の空きマスを置不可(-1)にする
+      const around = getAroundCells(r, c);
+      around.forEach(([ar, ac]) => {
+        if (board[ar][ac] === 0) {
+          board[ar][ac] = -1;
+        }
+      });
+
+      // マウスホバーのプレビュー解除
+      handleHover(r, c, false);
+
+      // UIの更新
+      updateBoardUI();
+
+      // 勝敗判定（次に置けるマスがあるか）
+      if (!hasValidMove()) {
+        gameOver = true;
+        statusEl.textContent = `ゲーム終了！ プレイヤー ${currentPlayer} の勝利！`;
+        statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      } else {
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+        statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      }
+    }
+
+    function updateBoardUI() {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = boardEl.children[r * BOARD_SIZE + c];
+          const val = board[r][c];
+
+          // クラスのリセット
+          cell.className = 'cell';
+
+          if (val === 1) {
+            cell.textContent = '×';
+            cell.classList.add('taken-p1');
+          } else if (val === 2) {
+            cell.textContent = '×';
+            cell.classList.add('taken-p2');
+          } else if (val === -1) {
+            cell.textContent = '';
+            cell.classList.add('forbidden');
+          } else {
+            cell.textContent = '';
+            cell.classList.add('selectable');
+          }
+        }
+      }
+    }
+
+    function hasValidMove() {
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          if (board[r][c] === 0) return true;
+        }
+      }
+      return false;
+    }
+
+    function resetGame() {
+      board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+      currentPlayer = 1;
+      gameOver = false;
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      createBoard();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
