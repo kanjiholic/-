@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 21-2：円周上の交差不可線引きゲーム</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .game-num {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 5px 0 10px 0;
+      font-size: 1.6rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    .p1-turn { color: #1e88e5; }
+    .p2-turn { color: #e53935; }
+    
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0;
+      border: 2px solid #ffa726;
+      padding: 10px 20px !important;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .canvas-container {
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 10px;
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    /* ゲーム終了時の背景黄色（ゴールド）ハイライト */
+    .canvas-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    canvas {
+      display: block;
+      cursor: pointer;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    button:hover { background: #43a047; }
+    .rules {
+      max-width: 420px;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #444;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 21-2</div>
+    <h1>20点の円周交差不可ゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です（1つ目の点を選んでください）</div>
+
+  <div id="container" class="canvas-container">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div class="controls">
+    <button onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <strong>【ルール】</strong><br>
+    ・2人で交互に2つの点を選んで線を引きます。<br>
+    ・<b>一度線が引かれた点</b>は二度と使えません。<br>
+    ・すでに引かれている線と<b>途中で交差する線</b>は引けません。<br>
+    ・線を引けなくなった方が負けです。
+  </div>
+
+  <script>
+    const NUM_POINTS = 20;
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+
+    const CENTER_X = canvas.width / 2;
+    const CENTER_Y = canvas.height / 2;
+    const RADIUS = 160;
+    const POINT_RADIUS = 10;
+
+    let points = [];
+    let lines = []; // {p1, p2, player}
+    let usedPoints = new Set();
+    let selectedPoint = null;
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    // 点の座標計算
+    function initPoints() {
+      points = [];
+      usedPoints.clear();
+      for (let i = 0; i < NUM_POINTS; i++) {
+        const angle = (i * 2 * Math.PI / NUM_POINTS) - (Math.PI / 2);
+        const x = CENTER_X + RADIUS * Math.cos(angle);
+        const y = CENTER_Y + RADIUS * Math.sin(angle);
+        points.push({ id: i, x, y });
+      }
+    }
+
+    // 2つの線分 (A-B) と (C-D) が途中で交差するか判定
+    function isIntersecting(p1, p2, p3, p4) {
+      if (p1 === p3 || p1 === p4 || p2 === p3 || p2 === p4) return false;
+
+      let a = Math.min(p1, p2);
+      let b = Math.max(p1, p2);
+      let c = Math.min(p3, p4);
+      let d = Math.max(p3, p4);
+
+      const cBetween = (c > a && c < b);
+      const dBetween = (d > a && d < b);
+
+      return (cBetween && !dBetween) || (!cBetween && dBetween);
+    }
+
+    // 新しい線 (p1-p2) が引けるかチェック
+    function isValidLine(p1, p2) {
+      if (p1 === p2) return false;
+      if (usedPoints.has(p1) || usedPoints.has(p2)) return false;
+
+      for (let l of lines) {
+        if (isIntersecting(p1, p2, l.p1, l.p2)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // 有効な手が残っているかチェック
+    function hasValidMove() {
+      for (let i = 0; i < NUM_POINTS; i++) {
+        if (usedPoints.has(i)) continue;
+        for (let j = i + 1; j < NUM_POINTS; j++) {
+          if (!usedPoints.has(j) && isValidLine(i, j)) return true;
+        }
+      }
+      return false;
+    }
+
+    // 描画処理
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. 背景の円
+      ctx.beginPath();
+      ctx.arc(CENTER_X, CENTER_Y, RADIUS, 0, Math.PI * 2);
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 2. 引かれた線の描画
+      lines.forEach(l => {
+        const pt1 = points[l.p1];
+        const pt2 = points[l.p2];
+        ctx.beginPath();
+        ctx.moveTo(pt1.x, pt1.y);
+        ctx.lineTo(pt2.x, pt2.y);
+        ctx.strokeStyle = l.player === 1 ? '#1e88e5' : '#e53935';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      });
+
+      // 3. 選択中の点からのガイド（プレビュー線）
+      if (selectedPoint !== null && !gameOver) {
+        const pt1 = points[selectedPoint];
+        for (let i = 0; i < NUM_POINTS; i++) {
+          if (isValidLine(selectedPoint, i)) {
+            const pt2 = points[i];
+            ctx.beginPath();
+            ctx.moveTo(pt1.x, pt1.y);
+            ctx.lineTo(pt2.x, pt2.y);
+            ctx.strokeStyle = '#a5d6a7';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+      }
+
+      // 4. 点の描画
+      points.forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, POINT_RADIUS, 0, Math.PI * 2);
+
+        if (usedPoints.has(pt.id)) {
+          ctx.fillStyle = '#bdbdbd';
+        } else if (selectedPoint === pt.id) {
+          ctx.fillStyle = '#ffb300';
+        } else if (selectedPoint !== null && isValidLine(selectedPoint, pt.id)) {
+          ctx.fillStyle = '#81c784';
+        } else {
+          ctx.fillStyle = '#424242';
+        }
+
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = usedPoints.has(pt.id) ? '#757575' : '#fff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pt.id + 1, pt.x, pt.y);
+      });
+    }
+
+    // クリックイベントハンドラ
+    canvas.addEventListener('click', (e) => {
+      if (gameOver) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let clickedPt = null;
+      for (let pt of points) {
+        const dist = Math.hypot(pt.x - clickX, pt.y - clickY);
+        if (dist <= POINT_RADIUS + 5) {
+          clickedPt = pt.id;
+          break;
+        }
+      }
+
+      if (clickedPt === null || usedPoints.has(clickedPt)) return;
+
+      if (selectedPoint === null) {
+        selectedPoint = clickedPt;
+        statusEl.textContent = `プレイヤー ${currentPlayer}：2つ目の点を選んでください`;
+      } else if (selectedPoint === clickedPt) {
+        selectedPoint = null;
+        statusEl.textContent = `プレイヤー ${currentPlayer} の番です（1つ目の点を選んでください）`;
+      } else {
+        if (isValidLine(selectedPoint, clickedPt)) {
+          lines.push({ p1: selectedPoint, p2: clickedPt, player: currentPlayer });
+          usedPoints.add(selectedPoint);
+          usedPoints.add(clickedPt);
+          selectedPoint = null;
+
+          if (!hasValidMove()) {
+            gameOver = true;
+            statusEl.textContent = `🎉 ゲーム終了！ プレイヤー ${currentPlayer} の勝利！`;
+            statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+            containerEl.classList.add('game-over'); // 背景を黄色に変化
+          } else {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            statusEl.textContent = `プレイヤー ${currentPlayer} の番です（1つ目の点を選んでください）`;
+            statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+          }
+        } else {
+          selectedPoint = clickedPt;
+        }
+      }
+      draw();
+    });
+
+    function resetGame() {
+      lines = [];
+      usedPoints.clear();
+      selectedPoint = null;
+      currentPlayer = 1;
+      gameOver = false;
+      statusEl.textContent = 'プレイヤー 1 の番です（1つ目の点を選んでください）';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over'); // 背景を元に戻す
+      draw();
+    }
+
+    initPoints();
+    draw();
+  </script>
+</body>
+</html>

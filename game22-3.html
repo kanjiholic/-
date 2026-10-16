@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 22-3：7×10 正方形塗りつぶしゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(7, 40px);
+      gap: 3px;
+      background: #37474f;
+      padding: 6px;
+      border-radius: 8px;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    /* 塗りつぶされた状態 */
+    .cell.painted {
+      background: #263238 !important;
+      cursor: not-allowed;
+    }
+
+    /* 選択中プレビュー */
+    .cell.selected-valid {
+      background: #81c784 !important; /* 有効な正方形：緑 */
+      border: 2px solid #2e7d32;
+    }
+    .cell.selected-invalid {
+      background: #ef9a9a !important; /* 無効：赤 */
+      border: 2px solid #c62828;
+    }
+
+    .action-panel {
+      margin-top: 10px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .confirm-btn {
+      padding: 8px 18px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #2196f3;
+      color: white;
+      font-weight: bold;
+    }
+    .confirm-btn:disabled {
+      background: #cfd8dc;
+      cursor: not-allowed;
+    }
+
+    /* 自動決着ボタン */
+    .auto-btn {
+      padding: 8px 18px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #ff9800;
+      color: white;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .auto-btn:hover:not(:disabled) {
+      background: #f57c00;
+    }
+    .auto-btn:disabled {
+      background: #cfd8dc;
+      color: #90a4ae;
+      cursor: not-allowed;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 850px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 22-3</div>
+    <h1>7×10 正方形塗りつぶしゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+
+  <div id="container" class="board-container">
+    <div id="board"></div>
+
+    <div class="action-panel">
+      <span id="selection-info">マスをクリックまたはドラッグして選択</span>
+      <button id="confirm-btn" class="confirm-btn" onclick="confirmPaint()" disabled>この正方形を塗る</button>
+      <button id="auto-btn" class="auto-btn" onclick="autoFinish()" disabled>⚡ 自動決着</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 1マスまたは<b>正方形（2×2, 3×3等）</b>の空きマスを塗ります。</span>
+    <span><b>【勝利条件】</b> 最後のマス目を塗ったプレイヤーの勝ちです。</span>
+  </div>
+
+  <script>
+    const ROWS = 7;
+    const COLS = 10;
+    let boardState = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+
+    let startCell = null;
+    let endCell = null;
+    let isMouseDown = false;
+
+    let selectedCells = [];
+    let isValidSelection = false;
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const autoBtn = document.getElementById('auto-btn');
+    const selectionInfo = document.getElementById('selection-info');
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+
+          cell.addEventListener('mousedown', (e) => handleStart(r, c, e));
+          cell.addEventListener('mouseenter', () => handleMove(r, c));
+
+          cell.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.dataset.row !== undefined) {
+              handleStart(parseInt(target.dataset.row), parseInt(target.dataset.col), e);
+            }
+          });
+
+          boardEl.appendChild(cell);
+        }
+      }
+
+      window.addEventListener('mouseup', handleEnd);
+      boardEl.addEventListener('touchmove', (e) => {
+        if (!isMouseDown) return;
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && target.dataset.row !== undefined) {
+          handleMove(parseInt(target.dataset.row), parseInt(target.dataset.col));
+        }
+      });
+      window.addEventListener('touchend', handleEnd);
+
+      updateUI();
+    }
+
+    function handleStart(r, c, e) {
+      if (gameOver || boardState[r][c]) return;
+
+      if (startCell && startCell.r === r && startCell.c === c && endCell && endCell.r === r && endCell.c === c) {
+        startCell = null;
+        endCell = null;
+        isMouseDown = false;
+        evaluateSelection();
+        return;
+      }
+
+      isMouseDown = true;
+      startCell = { r, c };
+      endCell = { r, c };
+      evaluateSelection();
+    }
+
+    function handleMove(r, c) {
+      if (gameOver || !isMouseDown || !startCell) return;
+      endCell = { r, c };
+      evaluateSelection();
+    }
+
+    function handleEnd() {
+      isMouseDown = false;
+    }
+
+    function evaluateSelection() {
+      if (!startCell || !endCell) {
+        selectedCells = [];
+        isValidSelection = false;
+        selectionInfo.textContent = 'マスをクリックまたはドラッグして選択';
+        updateUI();
+        return;
+      }
+
+      const minR = Math.min(startCell.r, endCell.r);
+      const maxR = Math.max(startCell.r, endCell.r);
+      const minC = Math.min(startCell.c, endCell.c);
+      const maxC = Math.max(startCell.c, endCell.c);
+
+      const height = maxR - minR + 1;
+      const width = maxC - minC + 1;
+
+      selectedCells = [];
+      let containsPainted = false;
+
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          selectedCells.push({ r, c });
+          if (boardState[r][c]) {
+            containsPainted = true;
+          }
+        }
+      }
+
+      const isSquare = (height === width);
+      isValidSelection = isSquare && !containsPainted;
+
+      if (!isSquare) {
+        selectionInfo.textContent = `選択中: ${height}×${width}（正方形ではありません）`;
+      } else if (containsPainted) {
+        selectionInfo.textContent = `選択中: ${height}×${width}（塗り済みマスを含んでいます）`;
+      } else {
+        if (height === 1) {
+          selectionInfo.textContent = `選択中: 1マス（選択OK）`;
+        } else {
+          selectionInfo.textContent = `選択中: ${height}×${width} の正方形（選択OK）`;
+        }
+      }
+
+      updateUI();
+    }
+
+    // 2×2以上の正方形が置けるか・残りの1マス数を判定
+    function checkAutoFinishState() {
+      if (gameOver) return { canAuto: false, remainingCount: 0 };
+
+      let remainingCount = 0;
+      let hasLargerSquare = false;
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (!boardState[r][c]) {
+            remainingCount++;
+            // 2×2 の正方形が作れるかチェック
+            if (r + 1 < ROWS && c + 1 < COLS) {
+              if (!boardState[r+1][c] && !boardState[r][c+1] && !boardState[r+1][c+1]) {
+                hasLargerSquare = true;
+              }
+            }
+          }
+        }
+      }
+
+      // 2×2以上の正方形が1つもなく、1マス以上の残りの空きマスがある場合に自動決着可能
+      return {
+        canAuto: !hasLargerSquare && remainingCount > 0,
+        remainingCount: remainingCount
+      };
+    }
+
+    function updateUI() {
+      const selectedSet = new Set(selectedCells.map(cell => `${cell.r},${cell.c}`));
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cellEl = boardEl.children[r * COLS + c];
+          cellEl.className = 'cell';
+
+          if (boardState[r][c]) {
+            cellEl.classList.add('painted');
+          } else if (selectedSet.has(`${r},${c}`)) {
+            cellEl.classList.add(isValidSelection ? 'selected-valid' : 'selected-invalid');
+          }
+        }
+      }
+
+      confirmBtn.disabled = !isValidSelection || gameOver;
+
+      // 自動決着ボタンの状態更新
+      const autoState = checkAutoFinishState();
+      if (autoState.canAuto) {
+        autoBtn.disabled = false;
+        autoBtn.textContent = `⚡ 自動決着（残り${autoState.remainingCount}マス）`;
+      } else {
+        autoBtn.disabled = true;
+        autoBtn.textContent = `⚡ 自動決着`;
+      }
+    }
+
+    function confirmPaint() {
+      if (!isValidSelection || gameOver) return;
+
+      selectedCells.forEach(cell => {
+        boardState[cell.r][cell.c] = true;
+      });
+
+      startCell = null;
+      endCell = null;
+      selectedCells = [];
+      isValidSelection = false;
+      selectionInfo.textContent = 'マスをクリックまたはドラッグして選択';
+
+      if (isBoardFull()) {
+        gameOver = true;
+        updateUI();
+        statusEl.textContent = `🎉 ゲーム終了！ プレイヤー ${currentPlayer} の勝利！`;
+        statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      updateUI();
+    }
+
+    // 自動決着の実行
+    function autoFinish() {
+      const autoState = checkAutoFinishState();
+      if (!autoState.canAuto || gameOver) return;
+
+      // 全マスを塗りつぶす
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          boardState[r][c] = true;
+        }
+      }
+
+      // 残りマス数が奇数なら現在の手番の勝利、偶数なら相手の勝利
+      const winner = (autoState.remainingCount % 2 === 1) ? currentPlayer : (currentPlayer === 1 ? 2 : 1);
+
+      gameOver = true;
+      startCell = null;
+      endCell = null;
+      selectedCells = [];
+
+      updateUI();
+      statusEl.textContent = `🎉 自動決着！ 残り${autoState.remainingCount}マスを順に塗り、プレイヤー ${winner} の勝利！`;
+      statusEl.className = (winner === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+      containerEl.classList.add('game-over');
+    }
+
+    function isBoardFull() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (!boardState[r][c]) return false;
+        }
+      }
+      return true;
+    }
+
+    function resetGame() {
+      boardState = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+      startCell = null;
+      endCell = null;
+      selectedCells = [];
+      isValidSelection = false;
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      selectionInfo.textContent = 'マスをクリックまたはドラッグして選択';
+      containerEl.classList.remove('game-over');
+      createBoard();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>

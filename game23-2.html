@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 23-2：1×20 駒追いかけっこゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .info-panel {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    /* 1×20 マス目トラック */
+    #track {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 3px;
+      width: 100%;
+      background: #37474f;
+      padding: 6px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: #ffffff;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+    }
+
+    .cell-num {
+      font-size: 0.65rem;
+      color: #b0bec5;
+      position: absolute;
+      top: 2px;
+    }
+
+    /* 駒のスタイル */
+    .piece {
+      width: 75%;
+      height: 75%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      font-size: 0.9rem;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+    }
+
+    .piece.p1 {
+      background: radial-gradient(circle at 30% 30%, #42a5f5, #1565c0);
+    }
+    .piece.p2 {
+      background: radial-gradient(circle at 30% 30%, #ef5350, #c62828);
+    }
+
+    /* 操作ボタンエリア */
+    .action-panel {
+      display: flex;
+      gap: 15px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .move-btn {
+      padding: 10px 24px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    /* プレイヤー1手番：青色ボタン */
+    .move-btn.p1-btn {
+      background: #1976d2;
+    }
+    .move-btn.p1-btn:hover:not(:disabled) {
+      background: #1565c0;
+    }
+
+    /* プレイヤー2手番：赤色ボタン */
+    .move-btn.p2-btn {
+      background: #d32f2f;
+    }
+    .move-btn.p2-btn:hover:not(:disabled) {
+      background: #c62828;
+    }
+
+    .move-btn:disabled {
+      background: #cfd8dc !important;
+      color: #90a4ae !important;
+      cursor: not-allowed;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 900px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 23-2</div>
+    <h1>1×20 駒追いかけっこゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 (青) の番です</div>
+
+  <div id="container" class="board-container">
+    <div class="info-panel">駒のあいだの空きマス: <span id="distance-val">18</span> マス</div>
+
+    <div id="track"></div>
+
+    <div class="action-panel">
+      <button id="btn-1" class="move-btn p1-btn" onclick="movePiece(1)">1マス進む ▶</button>
+      <button id="btn-2" class="move-btn p1-btn" onclick="movePiece(2)">2マス進む ▶▶</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 相手に向かって自分の駒を1または2マス進めます（追い越し不可）。</span>
+    <span><b>【勝利条件】</b> 相手を追い詰めて動けなくした（最後の空きマスを埋めた）方の勝ちです。</span>
+  </div>
+
+  <script>
+    const TOTAL_CELLS = 20;
+    let posP1 = 0;             // 0-indexed (マス 1)
+    let posP2 = TOTAL_CELLS - 1; // 0-indexed (マス 20)
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const trackEl = document.getElementById('track');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const distanceValEl = document.getElementById('distance-val');
+    const btn1 = document.getElementById('btn-1');
+    const btn2 = document.getElementById('btn-2');
+
+    function createBoard() {
+      trackEl.innerHTML = '';
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+
+        const num = document.createElement('span');
+        num.className = 'cell-num';
+        num.textContent = i + 1;
+        cell.appendChild(num);
+
+        trackEl.appendChild(cell);
+      }
+      updateUI();
+    }
+
+    function movePiece(step) {
+      if (gameOver) return;
+
+      if (currentPlayer === 1) {
+        posP1 += step;
+      } else {
+        posP2 -= step;
+      }
+
+      // 距離が0になった＝相手の目の前を塞いだため現プレイヤーの勝利
+      if (posP1 + 1 === posP2) {
+        const distance = posP2 - posP1 - 1;
+        if (distance === 0) {
+          gameOver = true;
+          updateUI();
+          statusEl.textContent = `🎉 ゲーム終了！ 相手の動く場所をなくした プレイヤー ${currentPlayer} の勝利！`;
+          statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+          containerEl.classList.add('game-over');
+          return;
+        }
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} (${currentPlayer === 1 ? '青' : '赤'}) の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      updateUI();
+    }
+
+    function updateUI() {
+      const distance = posP2 - posP1 - 1;
+      distanceValEl.textContent = distance;
+
+      // トラック内の駒をクリア・再描画
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        const cell = trackEl.children[i];
+        const existingPiece = cell.querySelector('.piece');
+        if (existingPiece) cell.removeChild(existingPiece);
+
+        if (i === posP1) {
+          const p1 = document.createElement('div');
+          p1.className = 'piece p1';
+          p1.textContent = 'P1';
+          cell.appendChild(p1);
+        } else if (i === posP2) {
+          const p2 = document.createElement('div');
+          p2.className = 'piece p2';
+          p2.textContent = 'P2';
+          cell.appendChild(p2);
+        }
+      }
+
+      // ボタン無効化制御
+      btn1.disabled = gameOver || distance < 1;
+      btn2.disabled = gameOver || distance < 2;
+
+      // ボタンのクラス（色）と表記調整
+      if (currentPlayer === 1) {
+        btn1.className = 'move-btn p1-btn';
+        btn2.className = 'move-btn p1-btn';
+        btn1.textContent = '1マス進む ▶';
+        btn2.textContent = '2マス進む ▶▶';
+      } else {
+        btn1.className = 'move-btn p2-btn';
+        btn2.className = 'move-btn p2-btn';
+        btn1.textContent = '◀ 1マス進む';
+        btn2.textContent = '◀◀ 2マス進む';
+      }
+    }
+
+    function resetGame() {
+      posP1 = 0;
+      posP2 = TOTAL_CELLS - 1;
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 (青) の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      updateUI();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>

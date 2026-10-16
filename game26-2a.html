@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 26-2a：1個取る・1個移す 2山石取りゲーム（チェス盤連動解説付）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      min-height: 100vh;
+      justify-content: space-between;
+    }
+    .header { text-align: center; }
+    .game-num { font-size: 0.85rem; color: #666; font-weight: bold; }
+    h1 { margin: 2px 0 6px 0; font-size: 1.4rem; }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1020px;
+    }
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 20px;
+      width: 100%;
+      margin-bottom: 15px;
+      align-items: start;
+    }
+    @media (max-width: 880px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .left-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .piles-wrapper {
+      display: flex;
+      justify-content: space-around;
+      gap: 12px;
+      width: 100%;
+    }
+    .pile-box {
+      flex: 1;
+      background: #fafafa;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pile-title { font-size: 1rem; font-weight: bold; color: #37474f; margin-bottom: 8px; }
+
+    .stones-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      align-items: center;
+      min-height: 70px;
+      padding: 8px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      width: 100%;
+    }
+    .stone {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #78909c, #37474f);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+    }
+
+    .control-panel {
+      width: 100%;
+      background: #f1f8e9;
+      border: 2px solid #c5e1a5;
+      border-radius: 8px;
+      padding: 12px 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .action-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .action-btn {
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      font-weight: bold;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s;
+    }
+    .action-btn:hover:not(:disabled) {
+      background: #e8f5e9;
+      border-color: #66bb6a;
+    }
+    .action-btn:disabled {
+      background: #f5f5f5;
+      color: #aaa;
+      border-color: #eee;
+      cursor: not-allowed;
+    }
+
+    .right-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fafafa;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 12px;
+      user-select: none;
+    }
+    .section-title { font-size: 0.95rem; font-weight: bold; color: #37474f; margin-bottom: 8px; }
+
+    .board-with-axis {
+      display: grid;
+      grid-template-columns: 28px auto;
+      grid-template-rows: auto 28px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    /* 石の数の最大値変動に対応した15x15拡張可能チェス盤グリッド */
+    .y-axis {
+      display: grid;
+      grid-template-rows: repeat(15, 24px);
+      align-items: center;
+      justify-items: center;
+      font-weight: bold;
+      font-size: 0.7rem;
+      color: #e53935;
+    }
+    .x-axis {
+      grid-column: 2;
+      display: grid;
+      grid-template-columns: repeat(15, 24px);
+      align-items: center;
+      justify-items: center;
+      font-weight: bold;
+      font-size: 0.7rem;
+      color: #1e88e5;
+    }
+
+    #chessboard {
+      grid-column: 2;
+      grid-row: 1;
+      display: grid;
+      grid-template-columns: repeat(15, 24px);
+      grid-template-rows: repeat(15, 24px);
+      border: 3px solid #3e2723;
+      border-radius: 4px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    }
+
+    .cell {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .cell.light { background: #f0d9b5; }
+    .cell.dark { background: #b58863; }
+
+    .cell.goal-cell { background: #ffe082 !important; }
+    .cell.goal-cell::after {
+      content: '🚩';
+      position: absolute;
+      font-size: 0.75rem;
+    }
+
+    .piece {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+    .piece.p1-piece {
+      background: radial-gradient(circle at 30% 30%, #42a5f5, #1565c0);
+      border: 1px solid #0d47a1;
+    }
+    .piece.p2-piece {
+      background: radial-gradient(circle at 30% 30%, #ef5350, #c62828);
+      border: 1px solid #b71c1c;
+    }
+
+    .pos-info {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #555;
+      text-align: center;
+    }
+
+    .controls { margin-top: 5px; }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 1020px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 26-2a</div>
+    <h1>1個取る・1個移す 2山石取りゲーム（チェス盤連動解説付）</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+
+  <div id="container" class="board-container">
+    <div class="main-grid">
+      
+      <!-- 左側：石の山＆操作 -->
+      <div class="left-section">
+        <div class="piles-wrapper">
+          <div class="pile-box">
+            <div class="pile-title">山 A (横軸): <span id="cnt-a">7</span> 個</div>
+            <div id="stones-a" class="stones-container"></div>
+          </div>
+          <div class="pile-box">
+            <div class="pile-title">山 B (縦軸): <span id="cnt-b">7</span> 個</div>
+            <div id="stones-b" class="stones-container"></div>
+          </div>
+        </div>
+
+        <div class="control-panel">
+          <div class="action-btn-group">
+            <button id="btn-take-a" class="action-btn" onclick="executeTurn('a')">
+              <span>① 山Aから 1個取る</span>
+              <span style="font-size:0.7rem; color:#666;">(盤: 右へ1マス)</span>
+            </button>
+            <button id="btn-take-b" class="action-btn" onclick="executeTurn('b')">
+              <span>① 山Bから 1個取る</span>
+              <span style="font-size:0.7rem; color:#666;">(盤: 上へ1マス)</span>
+            </button>
+            <button id="btn-take-both" class="action-btn" onclick="executeTurn('both')">
+              <span>② 両方から 1個ずつ取る</span>
+              <span style="font-size:0.7rem; color:#666;">(盤: 斜め右上へ1マス)</span>
+            </button>
+            <button id="btn-move-ab" class="action-btn" onclick="executeTurn('move_ab')">
+              <span>③ 山Aから1個取り 山Bへ移す</span>
+              <span style="font-size:0.7rem; color:#666;">(盤: 左上[北西]へ1マス)</span>
+            </button>
+            <button id="btn-move-ba" class="action-btn" onclick="executeTurn('move_ba')">
+              <span>③ 山Bから1個取り 山Aへ移す</span>
+              <span style="font-size:0.7rem; color:#666;">(盤: 右下[南東]へ1マス)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：チェス盤解説 (15x15 領域) -->
+      <div class="right-section">
+        <div class="section-title">💡 チェス盤でのリアルタイム位置表現（最大14マス対応）</div>
+        
+        <div class="board-with-axis">
+          <!-- 左側目盛り: 山B (上0 〜 下14) -->
+          <div class="y-axis" id="y-axis-labels"></div>
+
+          <!-- チェス盤 -->
+          <div id="chessboard"></div>
+
+          <!-- 下側目盛り: 山A (左14 〜 右0) -->
+          <div class="x-axis" id="x-axis-labels"></div>
+        </div>
+
+        <div class="pos-info">
+          現在の状況: 残り石 (山A: <span id="val-a" style="color:#1e88e5;">7</span>個, 山B: <span id="val-b" style="color:#e53935;">7</span>個)
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> ①1つの山から1個取る / ②両方から1個ずつ取る / ③1つの山から1個取り他方へ移す</span>
+    <span><b>【等価性】</b> 石を他方へ移す操作は、チェス盤上で<b>「左上」や「右下」への移動</b>に対応します！</span>
+  </div>
+
+  <script>
+    const MAX_SIZE = 15; // 石が片方の山に集まる最大14個に対応する15x15グリッド
+
+    let countA = 7;
+    let countB = 7;
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const stonesAEl = document.getElementById('stones-a');
+    const stonesBEl = document.getElementById('stones-b');
+    const cntAEl = document.getElementById('cnt-a');
+    const cntBEl = document.getElementById('cnt-b');
+    const valAEl = document.getElementById('val-a');
+    const valBEl = document.getElementById('val-b');
+    const boardEl = document.getElementById('chessboard');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+
+    const yAxisEl = document.getElementById('y-axis-labels');
+    const xAxisEl = document.getElementById('x-axis-labels');
+
+    const btnA = document.getElementById('btn-take-a');
+    const btnB = document.getElementById('btn-take-b');
+    const btnBoth = document.getElementById('btn-take-both');
+    const btnMoveAB = document.getElementById('btn-move-ab');
+    const btnMoveBA = document.getElementById('btn-move-ba');
+
+    function createChessboard() {
+      boardEl.innerHTML = '';
+      yAxisEl.innerHTML = '';
+      xAxisEl.innerHTML = '';
+
+      // 軸ラベルの生成 (0..14)
+      for (let i = 0; i < MAX_SIZE; i++) {
+        const yLbl = document.createElement('span');
+        yLbl.textContent = i;
+        yAxisEl.appendChild(yLbl);
+
+        const xLbl = document.createElement('span');
+        xLbl.textContent = (MAX_SIZE - 1) - i;
+        xAxisEl.appendChild(xLbl);
+      }
+
+      // 15x15 盤面描画 (上: 石B=0, 下: 石B=14 / 左: 石A=14, 右: 石A=0)
+      for (let r = 0; r < MAX_SIZE; r++) {
+        for (let c = 0; c < MAX_SIZE; c++) {
+          const cell = document.createElement('div');
+          const isLight = (r + c) % 2 === 0;
+          cell.className = `cell ${isLight ? 'light' : 'dark'}`;
+          cell.dataset.col = c;
+          cell.dataset.row = r;
+
+          // (14, 14) 位置（右下隅 c=14, r=0 ＝ 石A=0, 石B=0）ゴール
+          if (c === (MAX_SIZE - 1) && r === 0) {
+            cell.classList.add('goal-cell');
+          }
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updateChessboard() {
+      const targetCol = (MAX_SIZE - 1) - countA; // 石A: 14->0, 0->14
+      const targetRow = countB;                   // 石B: 0->0, 14->14
+
+      for (let i = 0; i < boardEl.children.length; i++) {
+        const cell = boardEl.children[i];
+        const c = parseInt(cell.dataset.col);
+        const r = parseInt(cell.dataset.row);
+
+        const existingPiece = cell.querySelector('.piece');
+        if (existingPiece) cell.removeChild(existingPiece);
+
+        if (c === targetCol && r === targetRow) {
+          const piece = document.createElement('div');
+          piece.className = `piece ${currentPlayer === 1 ? 'p1-piece' : 'p2-piece'}`;
+          piece.textContent = '♟';
+          cell.appendChild(piece);
+        }
+      }
+
+      valAEl.textContent = countA;
+      valBEl.textContent = countB;
+    }
+
+    function renderStones() {
+      stonesAEl.innerHTML = '';
+      stonesBEl.innerHTML = '';
+
+      for (let i = 0; i < countA; i++) {
+        const stone = document.createElement('div');
+        stone.className = 'stone';
+        stonesAEl.appendChild(stone);
+      }
+
+      for (let i = 0; i < countB; i++) {
+        const stone = document.createElement('div');
+        stone.className = 'stone';
+        stonesBEl.appendChild(stone);
+      }
+
+      cntAEl.textContent = countA;
+      cntBEl.textContent = countB;
+
+      updateChessboard();
+      updateControls();
+    }
+
+    function updateControls() {
+      if (gameOver) {
+        btnA.disabled = true;
+        btnB.disabled = true;
+        btnBoth.disabled = true;
+        btnMoveAB.disabled = true;
+        btnMoveBA.disabled = true;
+        return;
+      }
+
+      btnA.disabled = (countA === 0);
+      btnB.disabled = (countB === 0);
+      btnBoth.disabled = (countA === 0 || countB === 0);
+      btnMoveAB.disabled = (countA === 0);
+      btnMoveBA.disabled = (countB === 0);
+    }
+
+    function executeTurn(type) {
+      if (gameOver) return;
+
+      if (type === 'a' && countA > 0) {
+        countA -= 1;
+      } else if (type === 'b' && countB > 0) {
+        countB -= 1;
+      } else if (type === 'both' && countA > 0 && countB > 0) {
+        countA -= 1;
+        countB -= 1;
+      } else if (type === 'move_ab' && countA > 0) {
+        countA -= 1;
+        countB += 1;
+      } else if (type === 'move_ba' && countB > 0) {
+        countB -= 1;
+        countA += 1;
+      } else {
+        return;
+      }
+
+      if (countA === 0 && countB === 0) {
+        gameOver = true;
+        renderStones();
+        statusEl.textContent = `🎉 ゲーム終了！ 最後の操作を行った プレイヤー ${currentPlayer} (${currentPlayer === 1 ? '先手' : '後手'}) の勝利！`;
+        statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        updateControls();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      renderStones();
+    }
+
+    function resetGame() {
+      countA = 7;
+      countB = 7;
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      renderStones();
+    }
+
+    createChessboard();
+    renderStones();
+  </script>
+</body>
+</html>

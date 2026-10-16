@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 24-3：21個の数字と5の倍数ゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* 黒板風ボード */
+    #chalkboard {
+      background: #2b5329;
+      border: 8px solid #8d5524;
+      border-radius: 8px;
+      padding: 15px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+      margin-bottom: 12px;
+      user-select: none;
+    }
+
+    /* 数字カード */
+    .num-card {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    .num-card:hover:not(.removed) {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-3px);
+    }
+
+    /* 消去された数字カード */
+    .num-card.removed {
+      background: rgba(0, 0, 0, 0.3) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: rgba(255, 255, 255, 0.2) !important;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none !important;
+    }
+    .num-card.removed::after {
+      content: '✕';
+      position: absolute;
+      font-size: 2.2rem;
+      opacity: 0.85;
+    }
+
+    .num-card.removed.p1-removed::after {
+      color: #42a5f5; /* 先手が消した印 */
+    }
+    .num-card.removed.p2-removed::after {
+      color: #ef5350; /* 後手が消した印 */
+    }
+
+    /* 最後に残った2つの数字 */
+    .num-card.remained {
+      background: #ffeb3b !important;
+      color: #333333 !important;
+      border-color: #fbc02d !important;
+      box-shadow: 0 0 12px rgba(255, 235, 59, 0.8);
+      transform: scale(1.08);
+    }
+
+    .info-panel {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #37474f;
+      background: #eceff1;
+      padding: 8px 16px;
+      border-radius: 6px;
+      margin-bottom: 5px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 900px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 24-3</div>
+    <h1>21個の数字と5の倍数ゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です（消去する数字を選択）</div>
+
+  <div id="container" class="board-container">
+    <div id="chalkboard"></div>
+
+    <div class="info-panel">
+      残っている数字の数: <span id="rem-count">21</span> 個
+      <div id="calc-result" style="margin-top: 4px; font-size: 0.95rem; color: #555;"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 交互に1つずつ数字を消していき、最後に2つの数字を残します。</span>
+    <span><b>【勝利条件】</b> 残った2数の和が<b>5の倍数なら先手勝利</b>、<b>そうでなければ後手勝利</b>です。</span>
+  </div>
+
+  <script>
+    const TOTAL = 21;
+    let numbers = [];
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const chalkboardEl = document.getElementById('chalkboard');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const remCountEl = document.getElementById('rem-count');
+    const calcResultEl = document.getElementById('calc-result');
+
+    function initData() {
+      numbers = [];
+      for (let i = 1; i <= TOTAL; i++) {
+        numbers.push({ val: i, removedBy: null });
+      }
+    }
+
+    function renderBoard() {
+      chalkboardEl.innerHTML = '';
+
+      const remainingNums = numbers.filter(n => n.removedBy === null);
+
+      numbers.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'num-card';
+
+        if (item.removedBy !== null) {
+          card.classList.add('removed', item.removedBy === 1 ? 'p1-removed' : 'p2-removed');
+        } else if (remainingNums.length === 2) {
+          card.classList.add('remained');
+        }
+
+        card.textContent = item.val;
+
+        card.addEventListener('click', () => removeNumber(idx));
+        chalkboardEl.appendChild(card);
+      });
+
+      updateUI();
+    }
+
+    function removeNumber(idx) {
+      if (gameOver || numbers[idx].removedBy !== null) return;
+
+      numbers[idx].removedBy = currentPlayer;
+
+      const remainingNums = numbers.filter(n => n.removedBy === null);
+
+      // 残りが2個になったら決着
+      if (remainingNums.length === 2) {
+        gameOver = true;
+        const n1 = remainingNums[0].val;
+        const n2 = remainingNums[1].val;
+        const sum = n1 + n2;
+        const isMultipleOf5 = (sum % 5 === 0);
+        const winner = isMultipleOf5 ? 1 : 2; // 5の倍数なら先手(P1)勝利、そうでなければ後手(P2)勝利
+
+        renderBoard();
+        statusEl.textContent = `🎉 ゲーム終了！ 残った数は「${n1}」と「${n2}」（合計 ${sum}：5の倍数${isMultipleOf5 ? 'である' : 'ではない'}）のため プレイヤー ${winner} (${winner === 1 ? '先手' : '後手'}) の勝利！`;
+        statusEl.className = (winner === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です（消去する数字を選択）`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      renderBoard();
+    }
+
+    function updateUI() {
+      const remainingVals = numbers.filter(n => n.removedBy === null).map(n => n.val);
+      remCountEl.textContent = remainingVals.length;
+
+      if (remainingVals.length === 2) {
+        const sum = remainingVals[0] + remainingVals[1];
+        const isDiv5 = (sum % 5 === 0);
+        calcResultEl.textContent = `合計: ${remainingVals[0]} + ${remainingVals[1]} = ${sum} ➡ ${isDiv5 ? '5の倍数です（先手の勝ち）' : '5の倍数ではありません（後手の勝ち）'}`;
+      } else {
+        calcResultEl.textContent = `あと ${remainingVals.length - 2} 個の数字を消します`;
+      }
+    }
+
+    function resetGame() {
+      initData();
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です（消去する数字を選択）';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      renderBoard();
+    }
+
+    initData();
+    renderBoard();
+  </script>
+</body>
+</html>

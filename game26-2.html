@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 26-2：1個取る・1個移す 2山石取りゲーム</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header { text-align: center; }
+    .game-num { font-size: 0.85rem; color: #666; font-weight: bold; }
+    h1 { margin: 2px 0 6px 0; font-size: 1.4rem; }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
+    }
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .piles-wrapper {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      margin-bottom: 20px;
+      gap: 20px;
+    }
+
+    .pile-box {
+      flex: 1;
+      background: #fafafa;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pile-title { font-size: 1.1rem; font-weight: bold; color: #37474f; margin-bottom: 10px; }
+
+    .stones-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      min-height: 90px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      width: 100%;
+    }
+    .stone {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #78909c, #37474f);
+      box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+    }
+
+    .control-panel {
+      width: 100%;
+      background: #f1f8e9;
+      border: 2px solid #c5e1a5;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .action-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .action-btn {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .action-btn:hover:not(:disabled) {
+      background: #e8f5e9;
+      border-color: #66bb6a;
+      transform: translateY(-1px);
+    }
+    .action-btn:disabled {
+      background: #f5f5f5;
+      color: #aaa;
+      border-color: #eee;
+      cursor: not-allowed;
+    }
+
+    .controls { margin-top: 5px; }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 600px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 26-2</div>
+    <h1>1個取る・1個移す 2山石取りゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+
+  <div id="container" class="board-container">
+    <div class="piles-wrapper">
+      <div class="pile-box">
+        <div class="pile-title">山 A: <span id="cnt-a">7</span> 個</div>
+        <div id="stones-a" class="stones-container"></div>
+      </div>
+      <div class="pile-box">
+        <div class="pile-title">山 B: <span id="cnt-b">7</span> 個</div>
+        <div id="stones-b" class="stones-container"></div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="action-btn-group">
+        <button id="btn-take-a" class="action-btn" onclick="executeTurn('a')">① 山Aから 1個取る</button>
+        <button id="btn-take-b" class="action-btn" onclick="executeTurn('b')">① 山Bから 1個取る</button>
+        <button id="btn-take-both" class="action-btn" onclick="executeTurn('both')">② 両方の山から 1個ずつ取る</button>
+        <button id="btn-move-ab" class="action-btn" onclick="executeTurn('move_ab')">③ 山Aから1個取り 山Bへ移す</button>
+        <button id="btn-move-ba" class="action-btn" onclick="executeTurn('move_ba')">③ 山Bから1個取り 山Aへ移す</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 以下のいずれかの操作を行います。</span>
+    <span>① 1つの山から1個取る / ② 2つの山から同時に1個ずつ取る / ③ 1つの山から1個取りもう一方の山へ移す</span>
+    <span><b>【勝利条件】</b> 最後に石を取って<b>相手に石を取れなくしたプレイヤーの勝ち</b>です。</span>
+  </div>
+
+  <script>
+    let countA = 7;
+    let countB = 7;
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const stonesAEl = document.getElementById('stones-a');
+    const stonesBEl = document.getElementById('stones-b');
+    const cntAEl = document.getElementById('cnt-a');
+    const cntBEl = document.getElementById('cnt-b');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+
+    const btnA = document.getElementById('btn-take-a');
+    const btnB = document.getElementById('btn-take-b');
+    const btnBoth = document.getElementById('btn-take-both');
+    const btnMoveAB = document.getElementById('btn-move-ab');
+    const btnMoveBA = document.getElementById('btn-move-ba');
+
+    function renderStones() {
+      stonesAEl.innerHTML = '';
+      stonesBEl.innerHTML = '';
+
+      for (let i = 0; i < countA; i++) {
+        const stone = document.createElement('div');
+        stone.className = 'stone';
+        stonesAEl.appendChild(stone);
+      }
+
+      for (let i = 0; i < countB; i++) {
+        const stone = document.createElement('div');
+        stone.className = 'stone';
+        stonesBEl.appendChild(stone);
+      }
+
+      cntAEl.textContent = countA;
+      cntBEl.textContent = countB;
+
+      updateControls();
+    }
+
+    function updateControls() {
+      if (gameOver) {
+        btnA.disabled = true;
+        btnB.disabled = true;
+        btnBoth.disabled = true;
+        btnMoveAB.disabled = true;
+        btnMoveBA.disabled = true;
+        return;
+      }
+
+      btnA.disabled = (countA === 0);
+      btnB.disabled = (countB === 0);
+      btnBoth.disabled = (countA === 0 || countB === 0);
+      btnMoveAB.disabled = (countA === 0); // Aに石がないとBへ移せない
+      btnMoveBA.disabled = (countB === 0); // Bに石がないとAへ移せない
+    }
+
+    function executeTurn(type) {
+      if (gameOver) return;
+
+      if (type === 'a' && countA > 0) {
+        countA -= 1;
+      } else if (type === 'b' && countB > 0) {
+        countB -= 1;
+      } else if (type === 'both' && countA > 0 && countB > 0) {
+        countA -= 1;
+        countB -= 1;
+      } else if (type === 'move_ab' && countA > 0) {
+        countA -= 1;
+        countB += 1;
+      } else if (type === 'move_ba' && countB > 0) {
+        countB -= 1;
+        countA += 1;
+      } else {
+        return;
+      }
+
+      if (countA === 0 && countB === 0) {
+        gameOver = true;
+        renderStones();
+        statusEl.textContent = `🎉 ゲーム終了！ 最後の操作を行った プレイヤー ${currentPlayer} (${currentPlayer === 1 ? '先手' : '後手'}) の勝利！`;
+        statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        updateControls();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      renderStones();
+    }
+
+    function resetGame() {
+      countA = 7;
+      countB = 7;
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      renderStones();
+    }
+
+    renderStones();
+  </script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 25-1：6×8盤の上・右上・右 自由移動ゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 650px;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .chess-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+    }
+
+    /* 6x8 盤面 (8列, 6行) */
+    #chessboard {
+      display: grid;
+      grid-template-columns: repeat(8, 54px);
+      grid-template-rows: repeat(6, 54px);
+      border: 4px solid #3e2723;
+      border-radius: 4px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .cell {
+      width: 54px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      font-size: 0.75rem;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    /* 市松模様 */
+    .cell.light { background: #f0d9b5; color: #b58863; }
+    .cell.dark { background: #b58863; color: #f0d9b5; }
+
+    .coord-label {
+      position: absolute;
+      bottom: 2px;
+      right: 3px;
+      font-size: 0.6rem;
+      opacity: 0.6;
+    }
+
+    /* ゴールマス (h6) 強調 */
+    .cell.goal-cell {
+      background: #ffe082 !important;
+    }
+    .cell.goal-cell::after {
+      content: '🚩';
+      position: absolute;
+      font-size: 1.3rem;
+      top: 2px;
+      left: 3px;
+    }
+
+    /* 移動可能ガイド：白マス・黒マスでコントラストをつける */
+    .cell.light.valid-move {
+      background: #c8e6c9 !important; /* 明るい緑 */
+      cursor: pointer;
+    }
+    .cell.dark.valid-move {
+      background: #81c784 !important; /* やや濃い緑 */
+      cursor: pointer;
+    }
+
+    .cell.light.valid-move:hover {
+      background: #a5d6a7 !important;
+    }
+    .cell.dark.valid-move:hover {
+      background: #66bb6a !important;
+    }
+
+    /* 駒スタイル */
+    .piece {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+      z-index: 10;
+      transition: all 0.2s ease;
+    }
+
+    .piece.p1-piece {
+      background: radial-gradient(circle at 30% 30%, #42a5f5, #1565c0);
+      border: 2px solid #0d47a1;
+    }
+    .piece.p2-piece {
+      background: radial-gradient(circle at 30% 30%, #ef5350, #c62828);
+      border: 2px solid #b71c1c;
+    }
+
+    .info-panel {
+      margin-top: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #37474f;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 850px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 25-1</div>
+    <h1>6×8盤の上・右上・右 自由移動ゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 (青) の番です</div>
+
+  <div id="container" class="board-container">
+    <div class="chess-wrapper">
+      <div id="chessboard"></div>
+    </div>
+
+    <div class="info-panel">
+      現在位置: <span id="pos-label">a1</span> （緑色のマスへ好きなだけ進めます）
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> a1(左下)から交互に「上」「右上」「右」へ好きなだけ進めます。</span>
+    <span><b>【勝利条件】</b> 先に h6(右上) のマスに駒を到達させたプレイヤーの勝ちです。</span>
+  </div>
+
+  <script>
+    const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']; // 8列 (0..7)
+    const RANKS = ['1', '2', '3', '4', '5', '6'];          // 6行 (0..5)
+
+    let pieceCol = 0; // a1 (col: 0)
+    let pieceRow = 0; // a1 (row: 0)
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const boardEl = document.getElementById('chessboard');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const posLabelEl = document.getElementById('pos-label');
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+
+      for (let r = 5; r >= 0; r--) {
+        for (let c = 0; c < 8; c++) {
+          const cell = document.createElement('div');
+          const isLight = (r + c) % 2 === 1;
+          cell.className = `cell ${isLight ? 'light' : 'dark'}`;
+          cell.dataset.col = c;
+          cell.dataset.row = r;
+
+          if (c === 7 && r === 5) {
+            cell.classList.add('goal-cell');
+          }
+
+          const coord = document.createElement('span');
+          coord.className = 'coord-label';
+          coord.textContent = `${FILES[c]}${RANKS[r]}`;
+          cell.appendChild(coord);
+
+          cell.addEventListener('click', () => handleCellClick(c, r));
+          boardEl.appendChild(cell);
+        }
+      }
+
+      updateUI();
+    }
+
+    function isValidMove(targetCol, targetRow) {
+      if (gameOver) return false;
+
+      const dCol = targetCol - pieceCol;
+      const dRow = targetRow - pieceRow;
+
+      // 「右へ好きなだけ」 (dCol > 0, dRow === 0)
+      const isRight = (dCol > 0 && dRow === 0);
+      // 「上へ好きなだけ」 (dCol === 0, dRow > 0)
+      const isUp = (dCol === 0 && dRow > 0);
+      // 「右上へ好きなだけ」（斜め45度：dCol === dRow 且つ dCol > 0）
+      const isUpRight = (dCol > 0 && dCol === dRow);
+
+      return isRight || isUp || isUpRight;
+    }
+
+    function handleCellClick(col, row) {
+      if (!isValidMove(col, row)) return;
+
+      pieceCol = col;
+      pieceRow = row;
+
+      if (pieceCol === 7 && pieceRow === 5) {
+        gameOver = true;
+        updateBoardState();
+        statusEl.textContent = `🎉 ゲーム終了！ h6 に到達した プレイヤー ${currentPlayer} (${currentPlayer === 1 ? '青' : '赤'}) の勝利！`;
+        statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        posLabelEl.textContent = 'h6 (ゴール！)';
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} (${currentPlayer === 1 ? '青' : '赤'}) の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      updateUI();
+    }
+
+    function updateBoardState() {
+      for (let i = 0; i < boardEl.children.length; i++) {
+        const cell = boardEl.children[i];
+        const c = parseInt(cell.dataset.col);
+        const r = parseInt(cell.dataset.row);
+
+        const existingPiece = cell.querySelector('.piece');
+        if (existingPiece) cell.removeChild(existingPiece);
+
+        cell.classList.remove('valid-move');
+
+        if (c === pieceCol && r === pieceRow) {
+          const piece = document.createElement('div');
+          piece.className = `piece ${currentPlayer === 1 ? 'p1-piece' : 'p2-piece'}`;
+          piece.textContent = '♟';
+          cell.appendChild(piece);
+        } else if (isValidMove(c, r)) {
+          cell.classList.add('valid-move');
+        }
+      }
+    }
+
+    function updateUI() {
+      updateBoardState();
+      posLabelEl.textContent = `${FILES[pieceCol]}${RANKS[pieceRow]}`;
+    }
+
+    function resetGame() {
+      pieceCol = 0; // a
+      pieceRow = 0; // 1
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 (青) の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      updateUI();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 23：30と言ったら負けゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 850px;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* 1〜30の数字グリッド (10列×3行) */
+    #number-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    .num-card {
+      aspect-ratio: 1;
+      background: #eceff1;
+      border: 2px solid #cfd8dc;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #78909c;
+      transition: all 0.2s;
+    }
+
+    /* 言われた数字 */
+    .num-card.said-p1 {
+      background: #1e88e5;
+      color: white;
+      border-color: #1565c0;
+    }
+    .num-card.said-p2 {
+      background: #e53935;
+      color: white;
+      border-color: #c62828;
+    }
+
+    /* 30（負けの数字）の強調表示 */
+    .num-card.target-30 {
+      border: 2px dashed #ff9800;
+      color: #e65100;
+      background: #fff3e0;
+    }
+    .num-card.target-30.said-p1, .num-card.target-30.said-p2 {
+      background: #37474f !important;
+      color: #ff5252 !important;
+      border-color: #212121 !important;
+    }
+
+    /* 操作ボタンエリア */
+    .action-panel {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .say-btn {
+      flex: 1;
+      max-width: 220px;
+      padding: 10px 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      transition: background 0.15s;
+    }
+
+    /* プレイヤー1手番：青色ボタン */
+    .say-btn.p1-btn {
+      background: #1976d2;
+    }
+    .say-btn.p1-btn:hover:not(:disabled) {
+      background: #1565c0;
+    }
+
+    /* プレイヤー2手番：赤色ボタン */
+    .say-btn.p2-btn {
+      background: #d32f2f;
+    }
+    .say-btn.p2-btn:hover:not(:disabled) {
+      background: #c62828;
+    }
+
+    .say-btn:disabled {
+      background: #cfd8dc !important;
+      color: #90a4ae !important;
+      cursor: not-allowed;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 850px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 23</div>
+    <h1>30と言ったら負けゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+
+  <div id="container" class="board-container">
+    <div id="number-grid"></div>
+
+    <div class="action-panel">
+      <button id="btn-1" class="say-btn p1-btn" onclick="sayNumbers(1)">1個言う</button>
+      <button id="btn-2" class="say-btn p1-btn" onclick="sayNumbers(2)">2個言う</button>
+      <button id="btn-3" class="say-btn p1-btn" onclick="sayNumbers(3)">3個言う</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 交互に前の続きから1〜3個の数字を順番に言っていきます。</span>
+    <span><b>【敗北条件】</b> 先に「30」を言ったほうが負けです。</span>
+  </div>
+
+  <script>
+    const MAX_NUM = 30;
+    let currentNum = 0; // 最後に言われた数字
+    let numberHistory = Array(MAX_NUM + 1).fill(0); // 1~30が誰によって言われたか (1: P1, 2: P2)
+
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const gridEl = document.getElementById('number-grid');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const btns = [
+      document.getElementById('btn-1'),
+      document.getElementById('btn-2'),
+      document.getElementById('btn-3')
+    ];
+
+    function createGrid() {
+      gridEl.innerHTML = '';
+      for (let i = 1; i <= MAX_NUM; i++) {
+        const card = document.createElement('div');
+        card.className = 'num-card';
+        if (i === MAX_NUM) card.classList.add('target-30');
+        card.textContent = i;
+        gridEl.appendChild(card);
+      }
+      updateUI();
+    }
+
+    function sayNumbers(count) {
+      if (gameOver) return;
+
+      for (let i = 1; i <= count; i++) {
+        currentNum++;
+        if (currentNum <= MAX_NUM) {
+          numberHistory[currentNum] = currentPlayer;
+        }
+      }
+
+      if (currentNum >= MAX_NUM) {
+        gameOver = true;
+        const winner = currentPlayer === 1 ? 2 : 1;
+        updateUI();
+        statusEl.textContent = `🎉 ゲーム終了！ プレイヤー ${currentPlayer} が30を言ったため、プレイヤー ${winner} の勝利！`;
+        statusEl.className = (winner === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      updateUI();
+    }
+
+    function updateUI() {
+      // 数字カード描画
+      for (let i = 1; i <= MAX_NUM; i++) {
+        const card = gridEl.children[i - 1];
+        card.className = 'num-card';
+        if (i === MAX_NUM) card.classList.add('target-30');
+
+        if (numberHistory[i] === 1) {
+          card.classList.add('said-p1');
+        } else if (numberHistory[i] === 2) {
+          card.classList.add('said-p2');
+        }
+      }
+
+      // ボタン制御と色（クラス）の切り替え
+      const rem = MAX_NUM - currentNum;
+      const btnClass = currentPlayer === 1 ? 'say-btn p1-btn' : 'say-btn p2-btn';
+
+      btns.forEach((btn, index) => {
+        btn.className = btnClass;
+        btn.disabled = gameOver || rem < (index + 1);
+      });
+    }
+
+    function resetGame() {
+      currentNum = 0;
+      numberHistory = Array(MAX_NUM + 1).fill(0);
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      updateUI();
+    }
+
+    createGrid();
+  </script>
+</body>
+</html>

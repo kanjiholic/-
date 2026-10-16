@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 21-3：円形テーブルのコイン置きゲーム</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .game-num {
+      font-size: 0.9rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 5px 0 10px 0;
+      font-size: 1.6rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    .p1-turn { color: #1e88e5; }
+    .p2-turn { color: #e53935; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0;
+      border: 2px solid #ffa726;
+      padding: 10px 20px !important;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .canvas-container {
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 10px;
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    /* ゲーム終了時の背景黄色（ゴールド）ハイライト */
+    .canvas-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    canvas {
+      display: block;
+      cursor: crosshair;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    button:hover { background: #43a047; }
+    .rules {
+      max-width: 420px;
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #444;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 21-3</div>
+    <h1>円形テーブルの10円玉置きゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です</div>
+
+  <div id="container" class="canvas-container">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+  </div>
+
+  <div class="controls">
+    <button onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <strong>【ルール】</strong><br>
+    ・2人で交互に円形テーブルへ10円玉（コイン）を置いていきます。<br>
+    ・すでに置いてあるコインと<b>重ねて置くことはできません</b>。<br>
+    ・コインの<b>中心がテーブルの内側</b>にあれば、縁からはみ出してもOKです。<br>
+    ・コインを置けなくなった方が負けです。
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+
+    const CENTER_X = canvas.width / 2;
+    const CENTER_Y = canvas.height / 2;
+    const TABLE_RADIUS = 160; // テーブルの半径
+    const COIN_RADIUS = 28;   // 10円玉の半径
+
+    let coins = []; // {x, y, player}
+    let mousePos = null;
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    // コインが有効な位置か判定
+    function isValidPlacement(x, y) {
+      // 1. コインの中心がテーブル内にあるか（はみ出しOKルール）
+      const distToTableCenter = Math.hypot(x - CENTER_X, y - CENTER_Y);
+      if (distToTableCenter > TABLE_RADIUS) {
+        return false;
+      }
+
+      // 2. 他のコインと重なっていないか（距離が半径の2倍以上離れているか）
+      for (let coin of coins) {
+        const dist = Math.hypot(x - coin.x, y - coin.y);
+        if (dist < COIN_RADIUS * 2) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // テーブル上のどこかに置ける場所が残っているかサンプリング判定
+    function hasValidMove() {
+      // テーブル内をグリッド状に細かく走査してチェック
+      const step = 4;
+      for (let x = CENTER_X - TABLE_RADIUS; x <= CENTER_X + TABLE_RADIUS; x += step) {
+        for (let y = CENTER_Y - TABLE_RADIUS; y <= CENTER_Y + TABLE_RADIUS; y += step) {
+          if (isValidPlacement(x, y)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // 描画処理
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. 円形テーブル（木目調グラデーション風）
+      ctx.beginPath();
+      ctx.arc(CENTER_X, CENTER_Y, TABLE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = '#d7ccc8';
+      ctx.fill();
+      ctx.strokeStyle = '#8d6e63';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      // テーブル中心点マーク
+      ctx.beginPath();
+      ctx.arc(CENTER_X, CENTER_Y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#a1887f';
+      ctx.fill();
+
+      // 2. 置かれたコインの描画
+      coins.forEach(coin => {
+        drawCoin(coin.x, coin.y, coin.player === 1 ? '#1e88e5' : '#e53935', true);
+      });
+
+      // 3. マウスホバーのプレビュー描画
+      if (mousePos && !gameOver) {
+        const valid = isValidPlacement(mousePos.x, mousePos.y);
+        const color = valid ? (currentPlayer === 1 ? 'rgba(30, 136, 229, 0.5)' : 'rgba(229, 57, 53, 0.5)') : 'rgba(211, 47, 47, 0.3)';
+        drawCoin(mousePos.x, mousePos.y, color, false);
+      }
+    }
+
+    // コイン（10円玉風）の描画用関数
+    function drawCoin(x, y, mainColor, isSolid) {
+      ctx.beginPath();
+      ctx.arc(x, y, COIN_RADIUS, 0, Math.PI * 2);
+      
+      if (isSolid) {
+        // 銅貨グラデーション効果
+        const grad = ctx.createRadialGradient(x - 8, y - 8, 2, x, y, COIN_RADIUS);
+        grad.addColorStop(0, '#bcaaa4');
+        grad.addColorStop(0.5, mainColor);
+        grad.addColorStop(1, '#3e2723');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = mainColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 10円玉の縁のマーク
+        ctx.beginPath();
+        ctx.arc(x, y, COIN_RADIUS - 5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = mainColor;
+        ctx.fill();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // マウス移動・カーソル追従
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mousePos = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      draw();
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      mousePos = null;
+      draw();
+    });
+
+    // クリックでコイン配置
+    canvas.addEventListener('click', (e) => {
+      if (gameOver) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (isValidPlacement(x, y)) {
+        coins.push({ x, y, player: currentPlayer });
+
+        // 勝敗判定
+        if (!hasValidMove()) {
+          gameOver = true;
+          statusEl.textContent = `🎉 ゲーム終了！ プレイヤー ${currentPlayer} の勝利！`;
+          statusEl.className = (currentPlayer === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+          containerEl.classList.add('game-over');
+        } else {
+          currentPlayer = currentPlayer === 1 ? 2 : 1;
+          statusEl.textContent = `プレイヤー ${currentPlayer} の番です`;
+          statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+        }
+      }
+      draw();
+    });
+
+    function resetGame() {
+      coins = [];
+      mousePos = null;
+      currentPlayer = 1;
+      gameOver = false;
+      statusEl.textContent = 'プレイヤー 1 の番です';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      draw();
+    }
+
+    draw();
+  </script>
+</body>
+</html>

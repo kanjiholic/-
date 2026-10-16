@@ -3,108 +3,118 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>高校数学 数学ゲームポータル</title>
+  <title>数学ゲームポータル</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #f4f6f9;
-      color: #333;
-    }
-    h1 {
-      text-align: center;
-      color: #1a237e;
-      border-bottom: 2px solid #1a237e;
-      padding-bottom: 10px;
-    }
-    p.intro {
-      text-align: center;
-      color: #555;
-    }
-    .game-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-top: 30px;
-    }
-    .game-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       display: flex;
       flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
       justify-content: space-between;
-      transition: transform 0.2s;
     }
-    .game-card:hover {
-      transform: translateY(-4px);
+    .header { text-align: center; margin-bottom: 20px; }
+    h1 { margin: 5px 0; font-size: 1.8rem; color: #1a237e; }
+    .subtitle { font-size: 0.95rem; color: #666; }
+    .portal-container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .game-title {
-      font-size: 1.25rem;
-      font-weight: bold;
-      color: #0d47a1;
-      margin-top: 0;
+    .grid-menu {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      width: 100%;
+      margin-top: 10px;
     }
-    .game-desc {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-    .play-btn {
-      display: block;
-      text-align: center;
-      background: #1976d2;
-      color: white;
+    @media (max-width: 480px) { .grid-menu { grid-template-columns: 1fr; } }
+    .nav-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px 15px;
+      background: #f8f9fa;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
       text-decoration: none;
-      padding: 10px;
-      border-radius: 5px;
-      font-weight: bold;
+      color: #333;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .play-btn:hover {
-      background: #1565c0;
+    .nav-card:hover {
+      background: #e8eaf6;
+      border-color: #3f51b5;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 10px rgba(63,81,181,0.2);
     }
+    .nav-title { font-size: 1.25rem; font-weight: bold; color: #1a237e; }
+    .nav-desc { font-size: 0.8rem; color: #666; margin-top: 4px; text-align: center; }
+    .card-special {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      border-color: #42a5f5;
+    }
+    .card-special:hover {
+      background: linear-gradient(135deg, #bbdefb, #90caf9);
+      border-color: #1e88e5;
+    }
+    .card-special .nav-title { color: #0d47a1; }
+    .footer-text { font-size: 0.8rem; color: #888; margin-top: 20px; }
   </style>
 </head>
 <body>
 
-  <h1>数学アクティブ・ラーニング ゲーム集</h1>
-  <p class="intro">授業で扱う数学的ゲームの一覧です。カードを選んでプレイを開始してください。</p>
-
-  <div class="game-grid">
-
-    <!-- ゲーム1 -->
-    <div class="game-card">
-      <div>
-        <h2 class="game-title">8×8 斜め×取りゲーム</h2>
-        <p class="game-desc">8×8の盤で斜め一括にマークをつけあう不偏ゲーム。必勝法や対称性について考えてみよう。</p>
-      </div>
-        <!-- 同じフォルダにあるgame1.htmlへリンク -->
-      <a href="game1.html" class="play-btn">ゲームを始める</a>
-    </div>
-
-    <!-- ゲーム2（今後追加する例） -->
-    <div class="game-card">
-      <div>
-        <h2 class="game-title">ニム（石取りゲーム）</h2>
-        <p class="game-desc">山の石を交互に取っていく有名ゲーム。2進法（XOR演算）を活用した必勝法を解明しよう。</p>
-      </div>
-      <a href="game2.html" class="play-btn">ゲームを始める</a>
-    </div>
-
-    <!-- ゲーム3（今後追加する例） -->
-    <div class="game-card">
-      <div>
-        <h2 class="game-title">モンティ・ホール問題 シミュレータ</h2>
-        <p class="game-desc">ドアを変えるべきか？確率の直感と実際の確率の違いを実験・検証してみよう。</p>
-      </div>
-      <a href="game3.html" class="play-btn">ゲームを始める</a>
-    </div>
-
+  <div class="header">
+    <h1>数学ゲームポータル</h1>
+    <div class="subtitle">組み合わせゲーム理論・不変量・パリティ学習アプリ集</div>
   </div>
+
+  <div class="portal-container">
+    <div class="grid-menu">
+      <a href="index21.html" class="nav-card">
+        <span class="nav-title">第21話</span>
+        <span class="nav-desc">ゲーム21シリーズ</span>
+      </a>
+      <a href="index22.html" class="nav-card">
+        <span class="nav-title">第22話</span>
+        <span class="nav-desc">ゲーム22シリーズ</span>
+      </a>
+      <a href="index23.html" class="nav-card">
+        <span class="nav-title">第23話</span>
+        <span class="nav-desc">ゲーム23シリーズ</span>
+      </a>
+      <a href="index24.html" class="nav-card">
+        <span class="nav-title">第24話</span>
+        <span class="nav-desc">ゲーム24シリーズ</span>
+      </a>
+      <a href="index25.html" class="nav-card">
+        <span class="nav-title">第25話</span>
+        <span class="nav-desc">2D盤面移動シリーズ</span>
+      </a>
+      <a href="index26.html" class="nav-card">
+        <span class="nav-title">第26話</span>
+        <span class="nav-desc">2山石取り・ワイソフシリーズ</span>
+      </a>
+      <a href="game23-custom.html" class="nav-card card-special">
+        <span class="nav-title">⚙️ カウントアップゲーム</span>
+        <span class="nav-desc">目標数・加算数を自由にカスタマイズして研究・対戦できる汎用ツール</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer-text">授業・学習用 算数・数学ゲームポータル</div>
 
 </body>
 </html>

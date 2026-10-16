@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No. 24-1：＋－符号決定ゲーム</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 10px 20px;
+      height: 100vh;
+      justify-content: space-between;
+    }
+    .header {
+      text-align: center;
+    }
+    .game-num {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: bold;
+    }
+    h1 {
+      margin: 2px 0 6px 0;
+      font-size: 1.4rem;
+    }
+    #status {
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 6px 16px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      margin-bottom: 5px;
+    }
+    .p1-turn { color: #1e88e5; background: #e3f2fd; }
+    .p2-turn { color: #e53935; background: #ffebee; }
+
+    /* 勝利時のステータス強調 */
+    .game-over-status {
+      font-size: 1.4rem !important;
+      background: #fff3e0 !important;
+      color: #e65100 !important;
+      border: 2px solid #ffa726;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.03); }
+    }
+
+    .board-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    /* 終了時ハイライト */
+    .board-container.game-over {
+      background: #fff59d;
+      box-shadow: 0 0 20px rgba(255, 214, 0, 0.8), 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* 数式ディスプレイエリア */
+    #formula-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #263238;
+      padding: 20px;
+      border-radius: 8px;
+      width: 100%;
+      margin-bottom: 20px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .num-box {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ffffff;
+      padding: 4px 8px;
+    }
+
+    /* 記号マス（□） */
+    .op-box {
+      width: 44px;
+      height: 44px;
+      border: 2px dashed #90a4ae;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #b0bec5;
+      background: rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .op-box:hover:not(.filled) {
+      border-color: #ffffff;
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+    }
+
+    /* P1（先手：青）が入れた記号 */
+    .op-box.filled.p1-op {
+      background: #1e88e5;
+      color: white;
+      border: 2px solid #1565c0;
+      cursor: default;
+    }
+
+    /* P2（後手：赤）が入れた記号 */
+    .op-box.filled.p2-op {
+      background: #e53935;
+      color: white;
+      border: 2px solid #c62828;
+      cursor: default;
+    }
+
+    /* 選択モーダル/アクションエリア */
+    .action-panel {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      min-height: 50px;
+    }
+
+    .choice-btn {
+      padding: 10px 28px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    /* P1手番ボタン */
+    .choice-btn.p1-btn {
+      background: #1976d2;
+    }
+    .choice-btn.p1-btn:hover:not(:disabled) {
+      background: #1565c0;
+    }
+
+    /* P2手番ボタン */
+    .choice-btn.p2-btn {
+      background: #d32f2f;
+    }
+    .choice-btn.p2-btn:hover:not(:disabled) {
+      background: #c62828;
+    }
+
+    .choice-btn:disabled {
+      background: #cfd8dc !important;
+      color: #90a4ae !important;
+      cursor: not-allowed;
+    }
+
+    .calc-result-box {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #37474f;
+      background: #eceff1;
+      padding: 8px 16px;
+      border-radius: 6px;
+      margin-top: 5px;
+    }
+
+    .controls {
+      margin-top: 5px;
+    }
+    .reset-btn {
+      padding: 8px 24px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+    .reset-btn:hover { background: #43a047; }
+
+    .rules {
+      width: 100%;
+      max-width: 900px;
+      padding: 8px 15px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.3;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="game-num">No. 24-1</div>
+    <h1>＋－符号決定ゲーム</h1>
+  </div>
+
+  <div id="status" class="p1-turn">プレイヤー 1 の番です（□を選択してください）</div>
+
+  <div id="container" class="board-container">
+    <div id="formula-container"></div>
+
+    <div class="action-panel">
+      <span id="prompt-msg" style="font-weight: bold; color: #555;">□ をクリックして入れる記号を選択</span>
+      <div id="btn-group" style="display: none; gap: 12px;">
+        <button id="btn-plus" class="choice-btn p1-btn" onclick="applyOperator('+')">＋（プラス）</button>
+        <button id="btn-minus" class="choice-btn p1-btn" onclick="applyOperator('-')">－（マイナス）</button>
+      </div>
+    </div>
+
+    <div class="calc-result-box">
+      現在の計算状況: <span id="current-calc-text">未完成</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="reset-btn" onclick="resetGame()">最初からやり直す</button>
+  </div>
+
+  <div class="rules">
+    <span><b>【ルール】</b> 交互に□へ「＋」か「－」を入れます。</span>
+    <span><b>【勝利条件】</b> すべて埋めたときの和が<b>偶数なら先手勝ち</b>、<b>奇数なら後手勝ち</b>です。</span>
+  </div>
+
+  <script>
+    const NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    // 10個の□ (null: 未記入, { op: '+'|'-', player: 1|2 })
+    let operators = Array(10).fill(null);
+
+    let selectedOpIndex = null; // 現在選択されている□のインデックス
+    let currentPlayer = 1;
+    let gameOver = false;
+
+    const formulaContainer = document.getElementById('formula-container');
+    const statusEl = document.getElementById('status');
+    const containerEl = document.getElementById('container');
+    const promptMsg = document.getElementById('prompt-msg');
+    const btnGroup = document.getElementById('btn-group');
+    const btnPlus = document.getElementById('btn-plus');
+    const btnMinus = document.getElementById('btn-minus');
+    const currentCalcText = document.getElementById('current-calc-text');
+
+    function renderFormula() {
+      formulaContainer.innerHTML = '';
+
+      NUMBERS.forEach((num, idx) => {
+        // 数字表示
+        const numEl = document.createElement('div');
+        numEl.className = 'num-box';
+        numEl.textContent = num;
+        formulaContainer.appendChild(numEl);
+
+        // 数字と数字の間の□（最後の数字の後には置かない）
+        if (idx < operators.length) {
+          const opEl = document.createElement('div');
+          opEl.className = 'op-box';
+
+          const opData = operators[idx];
+          if (opData !== null) {
+            opEl.classList.add('filled', opData.player === 1 ? 'p1-op' : 'p2-op');
+            opEl.textContent = opData.op;
+          } else {
+            opEl.textContent = '□';
+            if (selectedOpIndex === idx) {
+              opEl.style.borderColor = '#ffeb3b';
+              opEl.style.background = 'rgba(255, 235, 59, 0.2)';
+            }
+          }
+
+          opEl.addEventListener('click', () => selectSquare(idx));
+          formulaContainer.appendChild(opEl);
+        }
+      });
+
+      updateUI();
+    }
+
+    function selectSquare(idx) {
+      if (gameOver || operators[idx] !== null) return;
+
+      selectedOpIndex = idx;
+      renderFormula();
+    }
+
+    function applyOperator(op) {
+      if (gameOver || selectedOpIndex === null || operators[selectedOpIndex] !== null) return;
+
+      operators[selectedOpIndex] = {
+        op: op,
+        player: currentPlayer
+      };
+
+      selectedOpIndex = null;
+
+      // 全ての□が埋まったかチェック
+      const filledCount = operators.filter(o => o !== null).length;
+
+      if (filledCount === operators.length) {
+        gameOver = true;
+        const total = calculateTotal();
+        const isEven = (total % 2 === 0);
+        const winner = isEven ? 1 : 2; // 偶数なら先手(P1)、奇数なら後手(P2)
+
+        renderFormula();
+        statusEl.textContent = `🎉 ゲーム終了！ 計算結果は「${total}」（${isEven ? '偶数' : '奇数'}）のため プレイヤー ${winner} (${winner === 1 ? '先手' : '後手'}) の勝利！`;
+        statusEl.className = (winner === 1 ? 'p1-turn' : 'p2-turn') + ' game-over-status';
+        containerEl.classList.add('game-over');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusEl.textContent = `プレイヤー ${currentPlayer} の番です（□を選択してください）`;
+      statusEl.className = currentPlayer === 1 ? 'p1-turn' : 'p2-turn';
+      renderFormula();
+    }
+
+    function calculateTotal() {
+      let sum = NUMBERS[0];
+      for (let i = 0; i < operators.length; i++) {
+        if (operators[i] !== null) {
+          if (operators[i].op === '+') {
+            sum += NUMBERS[i + 1];
+          } else {
+            sum -= NUMBERS[i + 1];
+          }
+        }
+      }
+      return sum;
+    }
+
+    function updateUI() {
+      // 記号選択ボタンの表示制御
+      if (selectedOpIndex !== null && !gameOver) {
+        promptMsg.style.display = 'none';
+        btnGroup.style.display = 'flex';
+
+        const btnClass = currentPlayer === 1 ? 'choice-btn p1-btn' : 'choice-btn p2-btn';
+        btnPlus.className = btnClass;
+        btnMinus.className = btnClass;
+      } else {
+        promptMsg.style.display = 'inline';
+        promptMsg.textContent = gameOver ? 'ゲーム終了' : '空いている □ を押して「＋」か「－」を選択してください';
+        btnGroup.style.display = 'none';
+      }
+
+      // 途中計算式テキストの生成
+      let expr = `${NUMBERS[0]}`;
+      let hasUnfilled = false;
+
+      for (let i = 0; i < operators.length; i++) {
+        if (operators[i] !== null) {
+          expr += ` ${operators[i].op} ${NUMBERS[i + 1]}`;
+        } else {
+          expr += ` □ ${NUMBERS[i + 1]}`;
+          hasUnfilled = true;
+        }
+      }
+
+      if (!hasUnfilled) {
+        const total = calculateTotal();
+        const isEven = (total % 2 === 0);
+        currentCalcText.textContent = `${expr} = ${total} （${isEven ? '偶数' : '奇数'}）`;
+      } else {
+        currentCalcText.textContent = `${expr}`;
+      }
+    }
+
+    function resetGame() {
+      operators = Array(10).fill(null);
+      selectedOpIndex = null;
+      currentPlayer = 1;
+      gameOver = false;
+
+      statusEl.textContent = 'プレイヤー 1 の番です（□を選択してください）';
+      statusEl.className = 'p1-turn';
+      containerEl.classList.remove('game-over');
+      renderFormula();
+    }
+
+    renderFormula();
+  </script>
+</body>
+</html>
