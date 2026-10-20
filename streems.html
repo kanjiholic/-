@@ -207,7 +207,7 @@
       z-index: 3;
     }
 
-    /* コース上の20個の丸マス（サイズを拡大：54px -> 62px） */
+    /* コース上の20個の丸マス（サイズ：62px） */
     .course-cell {
       position: absolute;
       width: 62px;
@@ -344,7 +344,7 @@
     </div>
     <div style="text-align: center; margin-bottom: 12px;">
       <button id="btn-draw" class="btn-action" onclick="drawCardHost()">数字を引く</button>
-      <button class="btn-action btn-reset" onclick="resetHost()">リセット</button>
+      <button class="btn-action btn-reset" onclick="confirmResetHost()">リセット</button>
     </div>
 
     <div style="font-weight: bold; font-size: 0.85rem; color: #444; margin-bottom: 5px; text-align: center;">
@@ -443,7 +443,7 @@
       0, 1, 3, 5, 7, 3, 10, 15, 20, 25, 30, 20, 40, 50, 60, 70, 50, 100, 150, 300
     ];
 
-    // 時計回り「つ」の字型のマス座標定義 (マスの拡大62pxに伴い若干位置調整)
+    // 時計回り「つ」の字型のマス座標定義
     const COURSE_POSITIONS = [
       // 上段 1〜8 (左 -> 右)
       { x: 45, y: -11 }, { x: 135, y: -11 }, { x: 225, y: -11 }, { x: 315, y: -11 },
@@ -498,7 +498,7 @@
       }
     }
 
-    // 4x10 カードグリッド描画 (親モードは直前の1枚を latest-drawn ハイライト)
+    // 4x10 カードグリッド描画
     function renderDeckGrid(containerId, masterList, usedMap, isSelectable = false, selectedId = null, onSelectFn = null, latestCardId = null) {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
@@ -518,7 +518,6 @@
             orderSpan.textContent = usedInfo.order;
             div.appendChild(orderSpan);
           }
-          // たった今引いたカードに黄色発光アニメーション適用
           if (latestCardId && item.id === latestCardId) {
             div.classList.add('latest-drawn');
           }
@@ -581,6 +580,17 @@
     let hostUsedMap = {};
     let hostLatestId = null;
 
+    // 親モードのリセット（確認アラート付き）
+    function confirmResetHost() {
+      // 進行中（すでにカードを引いている）場合のみ確認メッセージを表示
+      if (hostHistory.length > 0) {
+        if (!confirm('本当にリセットしますか？\n進行中のデータは消去されます。')) {
+          return; // キャンセルした場合は何もしない
+        }
+      }
+      resetHost();
+    }
+
     function resetHost() {
       hostDeck = buildDeck();
       hostHistory = [];
@@ -603,7 +613,7 @@
       const target = hostMasterList.find(c => c.val === cardVal && !hostUsedMap[c.id]);
       if (target) {
         hostUsedMap[target.id] = { order: hostHistory.length };
-        hostLatestId = target.id; // 直前に引いたカードIDを記録
+        hostLatestId = target.id;
       }
 
       const numEl = document.getElementById('host-current-num');
