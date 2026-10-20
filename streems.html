@@ -117,6 +117,29 @@
       font-weight: bold;
       text-decoration: none;
     }
+
+    /* 親モード：たった今引いた数（黄色く光る演出） */
+    .deck-card.latest-drawn {
+      background: #fff176 !important;
+      border: 2px solid #fbc02d !important;
+      color: #212121 !important;
+      font-weight: 900;
+      font-size: 1.05rem;
+      text-decoration: none !important;
+      box-shadow: 0 0 10px #fbc02d, inset 0 0 5px #fffde7;
+      animation: pulse-yellow 1.2s infinite alternate;
+      z-index: 10;
+    }
+    .deck-card.latest-drawn .draw-order {
+      color: #e65100 !important;
+      font-size: 0.65rem;
+    }
+
+    @keyframes pulse-yellow {
+      from { transform: scale(1); box-shadow: 0 0 6px #fbc02d; }
+      to { transform: scale(1.1); box-shadow: 0 0 14px #fbc02d; }
+    }
+
     .deck-card.selectable {
       cursor: pointer;
     }
@@ -184,11 +207,11 @@
       z-index: 3;
     }
 
-    /* コース上の1〜20個の丸マス */
+    /* コース上の20個の丸マス（サイズを拡大：54px -> 62px） */
     .course-cell {
       position: absolute;
-      width: 54px;
-      height: 54px;
+      width: 62px;
+      height: 62px;
       border-radius: 50%;
       background: white;
       border: 2px solid #004d61;
@@ -196,7 +219,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
+      font-size: 1.35rem;
       font-weight: bold;
       color: #2c3e50;
       cursor: pointer;
@@ -205,10 +228,10 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.08);
     }
     .course-cell .cell-num {
-      font-size: 0.6rem;
+      font-size: 0.65rem;
       color: #888;
       position: absolute;
-      top: 2px;
+      top: 3px;
     }
     .course-cell.filled {
       background: #e3f2fd;
@@ -288,6 +311,8 @@
     .btn-action:disabled { background: #b0bec5; cursor: not-allowed; }
     .btn-reset { background: #78909c; }
     .btn-reset:hover { background: #546e7a; }
+    .btn-start { background: #4caf50; font-size: 1.1rem; padding: 10px 28px; }
+    .btn-start:hover { background: #388e3c; }
 
     .nav-back {
       margin-top: 15px;
@@ -323,7 +348,7 @@
     </div>
 
     <div style="font-weight: bold; font-size: 0.85rem; color: #444; margin-bottom: 5px; text-align: center;">
-      全40枚のカードリスト（出た数字は暗転）
+      全40枚のカードリスト（最後に引いた数字は黄色く点滅）
     </div>
     <div style="max-width: 600px; margin: 0 auto;">
       <div id="host-deck-grid" class="deck-grid"></div>
@@ -338,14 +363,12 @@
 
     <!-- 「つ」の字時計回りコースエリア -->
     <div class="tsu-layout-container">
-      <!-- 矢印SVG背景 -->
       <svg class="arrow-svg" viewBox="0 0 960 380">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#004d61"/>
           </marker>
         </defs>
-        <!-- 軌道矢印ライン -->
         <path d="M 60 20 L 780 20 A 130 130 0 0 1 780 360 L 70 360" 
               fill="none" stroke="#004d61" stroke-width="12" marker-end="url(#arrow)" stroke-linejoin="round"/>
       </svg>
@@ -379,7 +402,7 @@
     <div class="drawn-display" style="padding: 6px; margin-bottom: 5px;">
       <span style="font-size: 0.85rem; color: #666;">引いた数字: </span>
       <span id="solo-current-num" style="font-size: 2rem; font-weight: bold; color: #1a237e;">-</span>
-      <span id="solo-count-text" style="margin-left: 15px; font-weight: bold; color: #3f51b5;">[ 1 / 20 ]</span>
+      <span id="solo-count-text" style="margin-left: 15px; font-weight: bold; color: #3f51b5;">[ 0 / 20 ]</span>
     </div>
 
     <!-- 「つ」の字時計回りコースエリア -->
@@ -406,7 +429,8 @@
     </details>
 
     <div style="text-align: center; margin-top: 10px;">
-      <button class="btn-action btn-reset" onclick="resetSolo()">最初からやり直す</button>
+      <button id="btn-solo-start" class="btn-action btn-start" onclick="startSoloGame()">🎮 ゲームスタート</button>
+      <button id="btn-solo-reset" class="btn-action btn-reset" onclick="resetSolo()" style="display:none;">最初からやり直す</button>
     </div>
     <div id="score-solo" class="score-banner" style="display:none;"></div>
   </div>
@@ -419,20 +443,19 @@
       0, 1, 3, 5, 7, 3, 10, 15, 20, 25, 30, 20, 40, 50, 60, 70, 50, 100, 150, 300
     ];
 
-    // 時計回り「つ」の字型のマス座標定義 (pixel absolute)
-    // 幅960px x 高さ380px のSVG上に沿って配置
+    // 時計回り「つ」の字型のマス座標定義 (マスの拡大62pxに伴い若干位置調整)
     const COURSE_POSITIONS = [
       // 上段 1〜8 (左 -> 右)
-      { x: 50, y: -7 }, { x: 140, y: -7 }, { x: 230, y: -7 }, { x: 320, y: -7 },
-      { x: 410, y: -7 }, { x: 500, y: -7 }, { x: 590, y: -7 }, { x: 680, y: -7 },
+      { x: 45, y: -11 }, { x: 135, y: -11 }, { x: 225, y: -11 }, { x: 315, y: -11 },
+      { x: 405, y: -11 }, { x: 495, y: -11 }, { x: 585, y: -11 }, { x: 675, y: -11 },
       // 右カーブ 9〜12
-      { x: 785, y: 35 }, { x: 840, y: 110 }, { x: 840, y: 220 }, { x: 785, y: 295 },
+      { x: 780, y: 31 }, { x: 835, y: 106 }, { x: 835, y: 216 }, { x: 780, y: 291 },
       // 下段 13〜20 (右 -> 左)
-      { x: 680, y: 333 }, { x: 590, y: 333 }, { x: 500, y: 333 }, { x: 410, y: 333 },
-      { x: 320, y: 333 }, { x: 230, y: 333 }, { x: 140, y: 333 }, { x: 50, y: 333 }
+      { x: 675, y: 329 }, { x: 585, y: 329 }, { x: 495, y: 329 }, { x: 405, y: 329 },
+      { x: 315, y: 329 }, { x: 225, y: 329 }, { x: 135, y: 329 }, { x: 45, y: 329 }
     ];
 
-    // 4×10カードマスターリスト（1〜10, 11〜19+★, 11〜19+20, 21〜30）
+    // 4×10カードマスターリスト
     function createMasterDeckList() {
       let list = [];
       for (let i = 1; i <= 10; i++) list.push({ id: `c-${i}`, val: i });
@@ -475,8 +498,8 @@
       }
     }
 
-    // 4x10 カードグリッド描画
-    function renderDeckGrid(containerId, masterList, usedMap, isSelectable = false, selectedId = null, onSelectFn = null) {
+    // 4x10 カードグリッド描画 (親モードは直前の1枚を latest-drawn ハイライト)
+    function renderDeckGrid(containerId, masterList, usedMap, isSelectable = false, selectedId = null, onSelectFn = null, latestCardId = null) {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
       masterList.forEach(item => {
@@ -494,6 +517,10 @@
             orderSpan.className = 'draw-order';
             orderSpan.textContent = usedInfo.order;
             div.appendChild(orderSpan);
+          }
+          // たった今引いたカードに黄色発光アニメーション適用
+          if (latestCardId && item.id === latestCardId) {
+            div.classList.add('latest-drawn');
           }
         } else if (isSelectable) {
           div.classList.add('selectable');
@@ -552,17 +579,19 @@
     let hostHistory = [];
     let hostMasterList = createMasterDeckList();
     let hostUsedMap = {};
+    let hostLatestId = null;
 
     function resetHost() {
       hostDeck = buildDeck();
       hostHistory = [];
       hostUsedMap = {};
+      hostLatestId = null;
       document.getElementById('host-left').textContent = hostDeck.length;
       document.getElementById('host-current-num').textContent = '-';
       document.getElementById('host-current-num').className = 'drawn-number';
       document.getElementById('host-count-text').textContent = '[ 第 0 / 20 問 ]';
       document.getElementById('btn-draw').disabled = false;
-      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap);
+      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap, false, null, null, null);
     }
 
     function drawCardHost() {
@@ -574,6 +603,7 @@
       const target = hostMasterList.find(c => c.val === cardVal && !hostUsedMap[c.id]);
       if (target) {
         hostUsedMap[target.id] = { order: hostHistory.length };
+        hostLatestId = target.id; // 直前に引いたカードIDを記録
       }
 
       const numEl = document.getElementById('host-current-num');
@@ -583,7 +613,7 @@
       document.getElementById('host-left').textContent = hostDeck.length;
       document.getElementById('host-count-text').textContent = `[ 第 ${hostHistory.length} / 20 問 ]`;
 
-      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap);
+      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap, false, null, null, hostLatestId);
 
       if (hostHistory.length === 20) {
         document.getElementById('btn-draw').disabled = true;
@@ -614,7 +644,7 @@
     }
 
     function handlePlayerCellClick(index) {
-      if (playerData[index] !== null) return; // 記入済みは無視
+      if (playerData[index] !== null) return;
 
       if (!playerSelectedCard) {
         alert('先に中央の表から配置したい数字カードを選択してください。');
@@ -645,12 +675,25 @@
     function resetSolo() {
       soloDeck = buildDeck();
       soloCount = 0;
+      soloCurrentCard = null;
       soloData.fill(null);
       soloUsedMap = {};
+      
+      document.getElementById('solo-current-num').textContent = '-';
+      document.getElementById('solo-count-text').textContent = '[ 0 / 20 ]';
+      document.getElementById('btn-solo-start').style.display = 'inline-block';
+      document.getElementById('btn-solo-reset').style.display = 'none';
+      document.getElementById('score-solo').style.display = 'none';
+
       createCourseCells('course-cells-solo', handleSoloCellClick);
       buildRefScoreGrid('ref-score-table-solo');
+      renderDeckGrid('solo-deck-grid', soloMasterList, soloUsedMap);
+    }
+
+    function startSoloGame() {
+      document.getElementById('btn-solo-start').style.display = 'none';
+      document.getElementById('btn-solo-reset').style.display = 'inline-block';
       nextSoloTurn();
-      document.getElementById('score-solo').style.display = 'none';
     }
 
     function nextSoloTurn() {
