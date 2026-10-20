@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>敬和学園高等学校 数学表現ゲーム集</title>
+  <title>数学ゲームポータル</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -71,50 +71,73 @@
       border-color: #1e88e5;
     }
     .card-special .nav-title { color: #0d47a1; }
-    .footer-text { font-size: 0.8rem; color: #888; margin-top: 20px; }
+    
+    /* 息抜きゲーム用（一番下の小さなボタン） */
+    .mini-game-btn {
+      margin-top: 20px;
+      padding: 8px 16px;
+      background: #ffffff;
+      border: 1.5px solid #ab47bc;
+      color: #7b1fa2;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .mini-game-btn:hover {
+      background: #f3e5f5;
+      transform: translateY(-1px);
+    }
+
+    .footer-text { font-size: 0.8rem; color: #888; margin-top: 15px; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1>数学表現ゲームポータルサイト</h1>
-    <div class="subtitle">Logical Thinking</div>
+    <h1>数学ゲームポータル</h1>
+    <div class="subtitle">組み合わせゲーム理論・不変量・パリティ学習アプリ集</div>
   </div>
 
   <div class="portal-container">
     <div class="grid-menu">
       <a href="index21.html" class="nav-card">
         <span class="nav-title">第21話</span>
-        <span class="nav-desc">対称性のゲーム</span>
+        <span class="nav-desc">ゲーム21シリーズ</span>
       </a>
       <a href="index22.html" class="nav-card">
         <span class="nav-title">第22話</span>
-        <span class="nav-desc">まねっこ作戦</span>
+        <span class="nav-desc">ゲーム22シリーズ</span>
       </a>
       <a href="index23.html" class="nav-card">
         <span class="nav-title">第23話</span>
-        <span class="nav-desc">カウントアップゲーム</span>
+        <span class="nav-desc">ゲーム23シリーズ</span>
       </a>
       <a href="index24.html" class="nav-card">
         <span class="nav-title">第24話</span>
-        <span class="nav-desc">パリティとゲーム</span>
+        <span class="nav-desc">ゲーム24シリーズ</span>
       </a>
       <a href="index25.html" class="nav-card">
         <span class="nav-title">第25話</span>
-        <span class="nav-desc">終盤からの分析</span>
+        <span class="nav-desc">2D盤面移動シリーズ</span>
       </a>
       <a href="index26.html" class="nav-card">
         <span class="nav-title">第26話</span>
-        <span class="nav-desc">二山崩し</span>
+        <span class="nav-desc">2山石取り・ワイソフシリーズ</span>
       </a>
       <a href="game23-custom.html" class="nav-card card-special">
         <span class="nav-title">⚙️ カウントアップゲーム</span>
         <span class="nav-desc">目標数・加算数を自由にカスタマイズして研究・対戦できる汎用ツール</span>
       </a>
     </div>
+
+    <!-- 一番下の小さな「STREEMS」ボタン -->
+    <a href="streems.html" class="mini-game-btn">🎲 息抜きゲーム：STREEMS</a>
   </div>
 
-  <div class="footer-text">敬和学園高等学校　数学表現ゲームポータル</div>
+  <div class="footer-text">授業・学習用 算数・数学ゲームポータル</div>
 
 </body>
 </html>

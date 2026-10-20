@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STREEMS（ストリームス）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 10px 15px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #333;
+    }
+    .header-title {
+      font-size: 1.5rem;
+      color: #1a237e;
+      margin: 2px 0 10px 0;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    /* モード切替エリア */
+    .mode-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      justify-content: center;
+    }
+    .mode-btn {
+      padding: 6px 18px;
+      border: 2px solid #3f51b5;
+      background: white;
+      color: #3f51b5;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: #3f51b5;
+      color: white;
+      box-shadow: 0 3px 8px rgba(63,81,181,0.3);
+    }
+
+    /* iPad横向きメインカード */
+    .card-panel {
+      background: white;
+      padding: 15px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 1020px;
+      display: none;
+    }
+    .card-panel.active { display: block; }
+
+    /* --- 親モード用CSS --- */
+    .drawn-display {
+      text-align: center;
+      padding: 10px;
+      background: #e8eaf6;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .drawn-number {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #1a237e;
+      line-height: 1;
+      margin: 2px 0;
+    }
+    .joker-text { color: #e91e63 !important; }
+
+    /* --- 4×10 カードリスト（内訳/選択用） --- */
+    .deck-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 3px;
+      background: #ffffff;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1.5px solid #2b5b84;
+    }
+    .deck-card {
+      aspect-ratio: 1.1;
+      background: white;
+      border: 1px solid #2b5b84;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #111;
+      position: relative;
+      user-select: none;
+    }
+    .deck-card.star { color: #e91e63; }
+    .deck-card.used {
+      background: #e0e0e0 !important;
+      color: #aaa !important;
+      text-decoration: line-through;
+    }
+    .deck-card.used .draw-order {
+      position: absolute;
+      top: 1px;
+      right: 2px;
+      font-size: 0.55rem;
+      color: #d32f2f;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .deck-card.selectable {
+      cursor: pointer;
+    }
+    .deck-card.selectable:hover {
+      background: #e3f2fd;
+    }
+    .deck-card.selected-card {
+      background: #ffb74d !important;
+      border-color: #f57c00 !important;
+      color: white !important;
+      transform: scale(1.08);
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* --- 時計回り「つ」の字型コースレイアウト (iPad横向き最適化) --- */
+    .tsu-layout-container {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      height: 380px;
+      margin: 10px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 矢印ガイド */
+    .arrow-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* 左端の小・大ラベル */
+    .label-sho {
+      position: absolute;
+      left: 5px;
+      top: 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #222;
+      z-index: 3;
+    }
+    .label-dai {
+      position: absolute;
+      left: 5px;
+      bottom: 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #222;
+      z-index: 3;
+    }
+
+    /* 内側の 4x10 カードテーブル設置エリア */
+    .center-card-box {
+      position: absolute;
+      left: 175px;
+      top: 105px;
+      width: 530px;
+      z-index: 3;
+    }
+
+    /* コース上の1〜20個の丸マス */
+    .course-cell {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #004d61;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #2c3e50;
+      cursor: pointer;
+      z-index: 3;
+      transition: all 0.2s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    .course-cell .cell-num {
+      font-size: 0.6rem;
+      color: #888;
+      position: absolute;
+      top: 2px;
+    }
+    .course-cell.filled {
+      background: #e3f2fd;
+      border-color: #1976d2;
+      cursor: default;
+    }
+    .course-cell.star-cell { color: #e91e63; }
+
+    /* ストリーム色分け用クラス（8色循環） */
+    .stream-color-0 { background: #ffe0b2 !important; border: 2.5px solid #fb8c00 !important; }
+    .stream-color-1 { background: #c8e6c9 !important; border: 2.5px solid #43a047 !important; }
+    .stream-color-2 { background: #b3e5fc !important; border: 2.5px solid #039be5 !important; }
+    .stream-color-3 { background: #e1bee7 !important; border: 2.5px solid #8e24aa !important; }
+    .stream-color-4 { background: #ffcdd2 !important; border: 2.5px solid #e53935 !important; }
+    .stream-color-5 { background: #fff9c4 !important; border: 2.5px solid #fdd835 !important; }
+    .stream-color-6 { background: #d7ccc8 !important; border: 2.5px solid #6d4c41 !important; }
+    .stream-color-7 { background: #cfd8dc !important; border: 2.5px solid #546e7a !important; }
+
+    /* 折りたたみ可能な得点参照表 */
+    details.score-reference {
+      margin-top: 5px;
+      background: #f9fbe7;
+      border: 1px solid #c0ca33;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    summary {
+      font-weight: bold;
+      color: #558b2f;
+      cursor: pointer;
+    }
+    .ref-score-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+      text-align: center;
+    }
+    .ref-item {
+      background: white;
+      border: 1px solid #dce775;
+      padding: 2px;
+      border-radius: 4px;
+    }
+    .ref-item.pitfall {
+      background: #ffecb3;
+      border-color: #ffa726;
+      font-weight: bold;
+      color: #d84315;
+    }
+
+    /* 得点バナー */
+    .score-banner {
+      background: #e8f5e9;
+      border: 2px solid #66bb6a;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .score-val { font-size: 2rem; color: #2e7d32; font-weight: bold; }
+
+    /* ボタン群 */
+    .btn-action {
+      padding: 8px 20px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: #1976d2;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-action:hover { background: #1565c0; }
+    .btn-action:disabled { background: #b0bec5; cursor: not-allowed; }
+    .btn-reset { background: #78909c; }
+    .btn-reset:hover { background: #546e7a; }
+
+    .nav-back {
+      margin-top: 15px;
+      color: #5c6bc0;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .nav-back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="header-title">🎲 STREEMS (ストリームス)</div>
+
+  <!-- モード選択タブ -->
+  <div class="mode-selector">
+    <button class="mode-btn active" onclick="switchMode('host')">👑 親モード (出題)</button>
+    <button class="mode-btn" onclick="switchMode('player')">📝 子モード (記録)</button>
+    <button class="mode-btn" onclick="switchMode('solo')">🎮 一人プレイ</button>
+  </div>
+
+  <!-- 1. 親モード -->
+  <div id="panel-host" class="card-panel active">
+    <div class="drawn-display">
+      <div style="font-size: 0.85rem; color: #666;">残り枚数: <span id="host-left">40</span> / 40</div>
+      <div id="host-current-num" class="drawn-number">-</div>
+      <div id="host-count-text" style="font-weight: bold; color: #3f51b5;">[ 第 0 / 20 問 ]</div>
+    </div>
+    <div style="text-align: center; margin-bottom: 12px;">
+      <button id="btn-draw" class="btn-action" onclick="drawCardHost()">数字を引く</button>
+      <button class="btn-action btn-reset" onclick="resetHost()">リセット</button>
+    </div>
+
+    <div style="font-weight: bold; font-size: 0.85rem; color: #444; margin-bottom: 5px; text-align: center;">
+      全40枚のカードリスト（出た数字は暗転）
+    </div>
+    <div style="max-width: 600px; margin: 0 auto;">
+      <div id="host-deck-grid" class="deck-grid"></div>
+    </div>
+  </div>
+
+  <!-- 2. 子モード -->
+  <div id="panel-player" class="card-panel">
+    <div style="font-weight: bold; font-size: 0.85rem; color: #1565c0; text-align: center;">
+      ① 中央の40枚から数字を選択 ➔ ② 周囲の「つ」の字コース（1〜20）のマスを選択
+    </div>
+
+    <!-- 「つ」の字時計回りコースエリア -->
+    <div class="tsu-layout-container">
+      <!-- 矢印SVG背景 -->
+      <svg class="arrow-svg" viewBox="0 0 960 380">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#004d61"/>
+          </marker>
+        </defs>
+        <!-- 軌道矢印ライン -->
+        <path d="M 60 20 L 780 20 A 130 130 0 0 1 780 360 L 70 360" 
+              fill="none" stroke="#004d61" stroke-width="12" marker-end="url(#arrow)" stroke-linejoin="round"/>
+      </svg>
+
+      <span class="label-sho">小</span>
+      <span class="label-dai">大</span>
+
+      <!-- 中央 4×10 カード選択表 -->
+      <div class="center-card-box">
+        <div id="player-deck-grid" class="deck-grid"></div>
+      </div>
+
+      <!-- 周囲の20個の丸マス -->
+      <div id="course-cells-player"></div>
+    </div>
+
+    <details class="score-reference">
+      <summary>📊 得点表を確認（クリックで開閉）</summary>
+      <div id="ref-score-table" class="ref-score-grid"></div>
+    </details>
+
+    <div style="text-align: center; display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+      <button class="btn-action" onclick="calculateScore('player')">採点する</button>
+      <button class="btn-action btn-reset" onclick="initPlayer()">リセット</button>
+    </div>
+    <div id="score-player" class="score-banner" style="display:none;"></div>
+  </div>
+
+  <!-- 3. 一人プレイモード -->
+  <div id="panel-solo" class="card-panel">
+    <div class="drawn-display" style="padding: 6px; margin-bottom: 5px;">
+      <span style="font-size: 0.85rem; color: #666;">引いた数字: </span>
+      <span id="solo-current-num" style="font-size: 2rem; font-weight: bold; color: #1a237e;">-</span>
+      <span id="solo-count-text" style="margin-left: 15px; font-weight: bold; color: #3f51b5;">[ 1 / 20 ]</span>
+    </div>
+
+    <!-- 「つ」の字時計回りコースエリア -->
+    <div class="tsu-layout-container">
+      <svg class="arrow-svg" viewBox="0 0 960 380">
+        <path d="M 60 20 L 780 20 A 130 130 0 0 1 780 360 L 70 360" 
+              fill="none" stroke="#004d61" stroke-width="12" marker-end="url(#arrow)" stroke-linejoin="round"/>
+      </svg>
+
+      <span class="label-sho">小</span>
+      <span class="label-dai">大</span>
+
+      <!-- 中央 4×10 カード履歴表 -->
+      <div class="center-card-box">
+        <div id="solo-deck-grid" class="deck-grid"></div>
+      </div>
+
+      <div id="course-cells-solo"></div>
+    </div>
+
+    <details class="score-reference">
+      <summary>📊 得点表を確認（クリックで開閉）</summary>
+      <div id="ref-score-table-solo" class="ref-score-grid"></div>
+    </details>
+
+    <div style="text-align: center; margin-top: 10px;">
+      <button class="btn-action btn-reset" onclick="resetSolo()">最初からやり直す</button>
+    </div>
+    <div id="score-solo" class="score-banner" style="display:none;"></div>
+  </div>
+
+  <a href="index.html" class="nav-back">← ポータルへ戻る</a>
+
+  <script>
+    // 得点表 (1〜20マス)
+    const SCORE_TABLE = [
+      0, 1, 3, 5, 7, 3, 10, 15, 20, 25, 30, 20, 40, 50, 60, 70, 50, 100, 150, 300
+    ];
+
+    // 時計回り「つ」の字型のマス座標定義 (pixel absolute)
+    // 幅960px x 高さ380px のSVG上に沿って配置
+    const COURSE_POSITIONS = [
+      // 上段 1〜8 (左 -> 右)
+      { x: 50, y: -7 }, { x: 140, y: -7 }, { x: 230, y: -7 }, { x: 320, y: -7 },
+      { x: 410, y: -7 }, { x: 500, y: -7 }, { x: 590, y: -7 }, { x: 680, y: -7 },
+      // 右カーブ 9〜12
+      { x: 785, y: 35 }, { x: 840, y: 110 }, { x: 840, y: 220 }, { x: 785, y: 295 },
+      // 下段 13〜20 (右 -> 左)
+      { x: 680, y: 333 }, { x: 590, y: 333 }, { x: 500, y: 333 }, { x: 410, y: 333 },
+      { x: 320, y: 333 }, { x: 230, y: 333 }, { x: 140, y: 333 }, { x: 50, y: 333 }
+    ];
+
+    // 4×10カードマスターリスト（1〜10, 11〜19+★, 11〜19+20, 21〜30）
+    function createMasterDeckList() {
+      let list = [];
+      for (let i = 1; i <= 10; i++) list.push({ id: `c-${i}`, val: i });
+      for (let i = 11; i <= 19; i++) list.push({ id: `c-${i}-1`, val: i });
+      list.push({ id: 'c-star', val: '★' });
+      for (let i = 11; i <= 19; i++) list.push({ id: `c-${i}-2`, val: i });
+      list.push({ id: 'c-20', val: 20 });
+      for (let i = 21; i <= 30; i++) list.push({ id: `c-${i}`, val: i });
+      return list;
+    }
+
+    // 山札の動的生成
+    function buildDeck() {
+      let deck = [];
+      for (let i = 1; i <= 10; i++) deck.push(i);
+      for (let i = 11; i <= 19; i++) { deck.push(i); deck.push(i); }
+      for (let i = 20; i <= 30; i++) deck.push(i);
+      deck.push('★');
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
+    }
+
+    // モード切り替え
+    function switchMode(mode) {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.card-panel').forEach(p => p.classList.remove('active'));
+      
+      if (mode === 'host') {
+        document.querySelectorAll('.mode-btn')[0].classList.add('active');
+        document.getElementById('panel-host').classList.add('active');
+      } else if (mode === 'player') {
+        document.querySelectorAll('.mode-btn')[1].classList.add('active');
+        document.getElementById('panel-player').classList.add('active');
+      } else {
+        document.querySelectorAll('.mode-btn')[2].classList.add('active');
+        document.getElementById('panel-solo').classList.add('active');
+      }
+    }
+
+    // 4x10 カードグリッド描画
+    function renderDeckGrid(containerId, masterList, usedMap, isSelectable = false, selectedId = null, onSelectFn = null) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      masterList.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'deck-card';
+        if (item.val === '★') div.classList.add('star');
+        
+        div.textContent = item.val;
+
+        const usedInfo = usedMap[item.id];
+        if (usedInfo) {
+          div.classList.add('used');
+          if (usedInfo.order) {
+            const orderSpan = document.createElement('span');
+            orderSpan.className = 'draw-order';
+            orderSpan.textContent = usedInfo.order;
+            div.appendChild(orderSpan);
+          }
+        } else if (isSelectable) {
+          div.classList.add('selectable');
+          if (selectedId === item.id) div.classList.add('selected-card');
+          div.onclick = () => onSelectFn(item);
+        }
+
+        container.appendChild(div);
+      });
+    }
+
+    // コース上の20個の丸マスの生成
+    function createCourseCells(containerId, clickHandler) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      for (let i = 0; i < 20; i++) {
+        const pos = COURSE_POSITIONS[i];
+        const cell = document.createElement('div');
+        cell.className = 'course-cell';
+        cell.id = `${containerId}-cell-${i}`;
+        cell.style.left = `${pos.x}px`;
+        cell.style.top = `${pos.y}px`;
+        cell.onclick = () => clickHandler(i);
+
+        const numTag = document.createElement('span');
+        numTag.className = 'cell-num';
+        numTag.textContent = i + 1;
+        cell.appendChild(numTag);
+
+        const valTag = document.createElement('span');
+        valTag.id = `${containerId}-val-${i}`;
+        cell.appendChild(valTag);
+
+        container.appendChild(cell);
+      }
+    }
+
+    // 参照用得点表UI生成
+    function buildRefScoreGrid(elementId) {
+      const target = document.getElementById(elementId);
+      target.innerHTML = SCORE_TABLE.map((pts, i) => {
+        const len = i + 1;
+        const isPit = [6, 12, 17].includes(len);
+        return `
+          <div class="ref-item ${isPit ? 'pitfall' : ''}">
+            <div style="font-size:0.65rem; color:#777;">${len}連</div>
+            <div style="font-weight:bold;">${pts}pt</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- 1. 親モード ---
+    let hostDeck = [];
+    let hostHistory = [];
+    let hostMasterList = createMasterDeckList();
+    let hostUsedMap = {};
+
+    function resetHost() {
+      hostDeck = buildDeck();
+      hostHistory = [];
+      hostUsedMap = {};
+      document.getElementById('host-left').textContent = hostDeck.length;
+      document.getElementById('host-current-num').textContent = '-';
+      document.getElementById('host-current-num').className = 'drawn-number';
+      document.getElementById('host-count-text').textContent = '[ 第 0 / 20 問 ]';
+      document.getElementById('btn-draw').disabled = false;
+      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap);
+    }
+
+    function drawCardHost() {
+      if (hostHistory.length >= 20 || hostDeck.length === 0) return;
+      
+      const cardVal = hostDeck.pop();
+      hostHistory.push(cardVal);
+
+      const target = hostMasterList.find(c => c.val === cardVal && !hostUsedMap[c.id]);
+      if (target) {
+        hostUsedMap[target.id] = { order: hostHistory.length };
+      }
+
+      const numEl = document.getElementById('host-current-num');
+      numEl.textContent = cardVal;
+      numEl.className = 'drawn-number' + (cardVal === '★' ? ' joker-text' : '');
+
+      document.getElementById('host-left').textContent = hostDeck.length;
+      document.getElementById('host-count-text').textContent = `[ 第 ${hostHistory.length} / 20 問 ]`;
+
+      renderDeckGrid('host-deck-grid', hostMasterList, hostUsedMap);
+
+      if (hostHistory.length === 20) {
+        document.getElementById('btn-draw').disabled = true;
+      }
+    }
+
+    // --- 2. 子モード ---
+    let playerData = Array(20).fill(null);
+    let playerMasterList = createMasterDeckList();
+    let playerUsedMap = {};
+    let playerSelectedCard = null;
+
+    function initPlayer() {
+      playerData.fill(null);
+      playerUsedMap = {};
+      playerSelectedCard = null;
+      createCourseCells('course-cells-player', handlePlayerCellClick);
+      renderPlayerDeck();
+      buildRefScoreGrid('ref-score-table');
+      document.getElementById('score-player').style.display = 'none';
+    }
+
+    function renderPlayerDeck() {
+      renderDeckGrid('player-deck-grid', playerMasterList, playerUsedMap, true, playerSelectedCard ? playerSelectedCard.id : null, (item) => {
+        playerSelectedCard = item;
+        renderPlayerDeck();
+      });
+    }
+
+    function handlePlayerCellClick(index) {
+      if (playerData[index] !== null) return; // 記入済みは無視
+
+      if (!playerSelectedCard) {
+        alert('先に中央の表から配置したい数字カードを選択してください。');
+        return;
+      }
+
+      playerData[index] = { val: playerSelectedCard.val, cardId: playerSelectedCard.id };
+      playerUsedMap[playerSelectedCard.id] = { order: null };
+      
+      const cell = document.getElementById(`course-cells-player-cell-${index}`);
+      const valTag = document.getElementById(`course-cells-player-val-${index}`);
+      cell.classList.add('filled');
+      if (playerSelectedCard.val === '★') cell.classList.add('star-cell');
+      valTag.textContent = playerSelectedCard.val;
+
+      playerSelectedCard = null;
+      renderPlayerDeck();
+    }
+
+    // --- 3. 一人プレイモード ---
+    let soloData = Array(20).fill(null);
+    let soloDeck = [];
+    let soloCurrentCard = null;
+    let soloCount = 0;
+    let soloMasterList = createMasterDeckList();
+    let soloUsedMap = {};
+
+    function resetSolo() {
+      soloDeck = buildDeck();
+      soloCount = 0;
+      soloData.fill(null);
+      soloUsedMap = {};
+      createCourseCells('course-cells-solo', handleSoloCellClick);
+      buildRefScoreGrid('ref-score-table-solo');
+      nextSoloTurn();
+      document.getElementById('score-solo').style.display = 'none';
+    }
+
+    function nextSoloTurn() {
+      soloCurrentCard = soloDeck.pop();
+      const target = soloMasterList.find(c => c.val === soloCurrentCard && !soloUsedMap[c.id]);
+      if (target) {
+        soloUsedMap[target.id] = { order: soloCount + 1 };
+      }
+
+      document.getElementById('solo-current-num').textContent = soloCurrentCard;
+      document.getElementById('solo-count-text').textContent = `[ ${soloCount + 1} / 20 ]`;
+      renderDeckGrid('solo-deck-grid', soloMasterList, soloUsedMap);
+    }
+
+    function handleSoloCellClick(index) {
+      if (soloCurrentCard === null || soloData[index] !== null) return;
+      
+      soloData[index] = { val: soloCurrentCard };
+      
+      const cell = document.getElementById(`course-cells-solo-cell-${index}`);
+      const valTag = document.getElementById(`course-cells-solo-val-${index}`);
+      cell.classList.add('filled');
+      if (soloCurrentCard === '★') cell.classList.add('star-cell');
+      valTag.textContent = soloCurrentCard;
+
+      soloCount++;
+      if (soloCount < 20) {
+        nextSoloTurn();
+      } else {
+        document.getElementById('solo-current-num').textContent = '終了';
+        calculateScore('solo');
+      }
+    }
+
+    // --- 得点計算 & 色分けロジック ---
+    function calculateScore(mode) {
+      const containerId = mode === 'player' ? 'course-cells-player' : 'course-cells-solo';
+      const rawData = mode === 'player' ? playerData : soloData;
+      const values = rawData.map(d => d ? d.val : null);
+
+      if (values.includes(null)) {
+        if (!confirm('まだ空いているマスがあります。このまま採点しますか？')) return;
+      }
+
+      const result = findBestScore(values);
+      applyStreamColoring(containerId, result.streamGroupIds);
+
+      const scoreBanner = document.getElementById(`score-${mode}`);
+      scoreBanner.style.display = 'block';
+      scoreBanner.innerHTML = `
+        <div style="font-size: 1rem; font-weight: bold; color: #333;">合計得点</div>
+        <div class="score-val">${result.totalScore} 点</div>
+        <div style="font-size: 0.85rem; color: #555; margin-top: 3px;">
+          ストリーム内訳: ${result.breakdown.join('マス, ')}マス
+        </div>
+      `;
+    }
+
+    // カラーのグループ別適用
+    function applyStreamColoring(containerId, groupIds) {
+      for (let i = 0; i < 20; i++) {
+        const cell = document.getElementById(`${containerId}-cell-${i}`);
+        for (let c = 0; c < 8; c++) cell.classList.remove(`stream-color-${c}`);
+        
+        if (groupIds[i] !== undefined && groupIds[i] !== null) {
+          const colorIdx = groupIds[i] % 8;
+          cell.classList.add(`stream-color-${colorIdx}`);
+        }
+      }
+    }
+
+    // ★最適化探索関数
+    function findBestScore(boardArr) {
+      const starIndices = [];
+      boardArr.forEach((v, i) => { if (v === '★') starIndices.push(i); });
+
+      if (starIndices.length === 0) {
+        return evaluateBoardWithArray(boardArr);
+      }
+
+      let maxScore = -1;
+      let bestResult = null;
+
+      for (let v = 1; v <= 30; v++) {
+        let tempArr = [...boardArr];
+        tempArr[starIndices[0]] = v;
+        const res = evaluateBoardWithArray(tempArr);
+        if (res.totalScore > maxScore) {
+          maxScore = res.totalScore;
+          bestResult = res;
+        }
+      }
+
+      return bestResult;
+    }
+
+    // 昇順判定関数
+    function evaluateBoardWithArray(arr) {
+      let streams = [];
+      let groupIds = Array(20).fill(0);
+      let currentGroupId = 0;
+      let currentLen = 0;
+
+      for (let i = 0; i < arr.length; i++) {
+        if (i === 0) {
+          currentLen = 1;
+          groupIds[i] = currentGroupId;
+        } else {
+          const prev = arr[i - 1];
+          const curr = arr[i];
+
+          if (prev === null || curr === null || prev > curr) {
+            streams.push(currentLen);
+            currentLen = 1;
+            currentGroupId++;
+            groupIds[i] = currentGroupId;
+          } else {
+            currentLen++;
+            groupIds[i] = currentGroupId;
+          }
+        }
+      }
+      streams.push(currentLen);
+
+      let totalScore = 0;
+      streams.forEach(len => {
+        if (len > 0) {
+          const idx = Math.min(len, 20) - 1;
+          totalScore += SCORE_TABLE[idx];
+        }
+      });
+
+      return { totalScore: totalScore, breakdown: streams, streamGroupIds: groupIds };
+    }
+
+    // 初期化実行
+    resetHost();
+    initPlayer();
+    resetSolo();
+  </script>
+</body>
+</html>
